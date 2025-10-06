@@ -46,8 +46,8 @@ serve(async (req) => {
           .gte('recorded_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
           .order('recorded_at', { ascending: true });
 
-        if (historyError || !history || history.length < 14) {
-          console.log(`Insufficient data for ${stock.symbol}`);
+        if (historyError || !history || history.length < 5) {
+          console.log(`Insufficient data for ${stock.symbol} (need at least 5 data points, have ${history?.length || 0})`);
           continue;
         }
 
@@ -55,12 +55,15 @@ serve(async (req) => {
         const prices = history.map(h => Number(h.close_price));
         const volumes = history.map(h => Number(h.volume));
 
-        // RSI calculation
-        const rsi = calculateRSI(prices);
+        // RSI calculation (adaptive period based on available data)
+        const rsiPeriod = Math.min(14, Math.max(5, prices.length - 1));
+        const rsi = calculateRSI(prices, rsiPeriod);
         
-        // Moving averages
-        const ma20 = calculateSMA(prices, 20);
-        const ma50 = calculateSMA(prices, 50);
+        // Moving averages (adaptive periods)
+        const ma20Period = Math.min(20, prices.length);
+        const ma50Period = Math.min(50, prices.length);
+        const ma20 = calculateSMA(prices, ma20Period);
+        const ma50 = calculateSMA(prices, ma50Period);
         
         // Volume analysis
         const avgVolume = volumes.slice(0, -1).reduce((a, b) => a + b, 0) / (volumes.length - 1);
@@ -70,21 +73,25 @@ serve(async (req) => {
         const priceChange = ((prices[prices.length - 1] - prices[0]) / prices[0]) * 100;
 
         // Prepare context for AI analysis
+        const dataPointsNote = history.length < 14 
+          ? `\nNote: Limited historical data available (${history.length} data points). Analysis based on available data.` 
+          : '';
+        
         const technicalContext = `
 Stock: ${stock.symbol} (${stock.name})
 Current Price: ฿${stock.current_price}
 Change: ${stock.change_percent}%
 
 Technical Indicators:
-- RSI (14): ${rsi.toFixed(2)}
-- MA20: ฿${ma20.toFixed(2)}
-- MA50: ฿${ma50.toFixed(2)}
+- RSI (${rsiPeriod}): ${rsi.toFixed(2)}
+- MA${ma20Period}: ฿${ma20.toFixed(2)}
+- MA${ma50Period}: ฿${ma50.toFixed(2)}
 - Volume Change: ${volumeChange.toFixed(1)}%
-- 30-day Price Change: ${priceChange.toFixed(2)}%
+- ${history.length}-day Price Change: ${priceChange.toFixed(2)}%
 - P/E Ratio: ${stock.pe_ratio}
-- Dividend Yield: ${(stock.dividend_yield * 100).toFixed(2)}%
+- Dividend Yield: ${(stock.dividend_yield * 100).toFixed(2)}%${dataPointsNote}
 
-Historical Price Trend (last 7 days):
+Historical Price Trend (last ${Math.min(7, history.length)} days):
 ${history.slice(-7).map(h => `${new Date(h.recorded_at).toLocaleDateString()}: ฿${Number(h.close_price).toFixed(2)}`).join('\n')}
 `;
 
@@ -186,10 +193,17 @@ ${history.slice(-7).map(h => `${new Date(h.recorded_at).toLocaleDateString()}: �
       console.log(`Successfully generated ${signals.length} trading signals`);
     }
 
+    const message = signals.length > 0 
+      ? `Successfully generated ${signals.length} trading signals`
+      : 'No signals generated. Waiting for more historical data to accumulate.';
+    
+    console.log(message);
+
     return new Response(
       JSON.stringify({
         success: true,
         signalsGenerated: signals.length,
+        message,
         timestamp: new Date().toISOString(),
       }),
       {
