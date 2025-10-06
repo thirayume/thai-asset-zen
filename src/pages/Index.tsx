@@ -8,6 +8,7 @@ import LiveMarketFeed from "@/components/LiveMarketFeed";
 import { MyPortfolio } from "@/components/MyPortfolio";
 import { TradingAlerts } from "@/components/TradingAlerts";
 import { Watchlist } from "@/components/Watchlist";
+import TradingSignals from "@/components/TradingSignals";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -81,9 +82,14 @@ const Index = () => {
           </div>
         </div>
 
-        {/* AI Suggestions and Market Feed */}
+        {/* AI Suggestions and Trading Signals */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <AISuggestions />
+          <TradingSignals />
+        </div>
+
+        {/* Market Feed */}
+        <div className="mb-6">
           <LiveMarketFeed />
         </div>
 

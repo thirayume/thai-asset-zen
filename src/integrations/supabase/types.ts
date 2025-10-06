@@ -326,6 +326,51 @@ export type Database = {
         }
         Relationships: []
       }
+      trading_signals: {
+        Row: {
+          confidence_score: number
+          created_at: string | null
+          current_price: number | null
+          expires_at: string | null
+          id: string
+          indicators: Json | null
+          reasoning: string
+          signal_type: string
+          stock_name: string
+          stock_symbol: string
+          stop_loss: number | null
+          target_price: number | null
+        }
+        Insert: {
+          confidence_score: number
+          created_at?: string | null
+          current_price?: number | null
+          expires_at?: string | null
+          id?: string
+          indicators?: Json | null
+          reasoning: string
+          signal_type: string
+          stock_name: string
+          stock_symbol: string
+          stop_loss?: number | null
+          target_price?: number | null
+        }
+        Update: {
+          confidence_score?: number
+          created_at?: string | null
+          current_price?: number | null
+          expires_at?: string | null
+          id?: string
+          indicators?: Json | null
+          reasoning?: string
+          signal_type?: string
+          stock_name?: string
+          stock_symbol?: string
+          stop_loss?: number | null
+          target_price?: number | null
+        }
+        Relationships: []
+      }
       user_portfolios: {
         Row: {
           created_at: string | null
