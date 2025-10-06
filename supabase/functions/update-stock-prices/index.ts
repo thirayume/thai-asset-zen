@@ -185,6 +185,70 @@ const generateMockStockData = () => {
   });
 };
 
+// Generate historical data for backfilling charts
+const generateHistoricalData = (months: number = 3) => {
+  console.log(`Generating ${months} months of historical data...`);
+  
+  const baseData = [
+    { symbol: 'PTT', name: 'PTT Public Company', basePrice: 38.5, volatility: 0.02 },
+    { symbol: 'KBANK', name: 'Kasikornbank', basePrice: 142.5, volatility: 0.015 },
+    { symbol: 'CPALL', name: 'CP All', basePrice: 68.0, volatility: 0.018 },
+    { symbol: 'AOT', name: 'Airports of Thailand', basePrice: 67.5, volatility: 0.025 },
+    { symbol: 'ADVANC', name: 'Advanced Info Service', basePrice: 225.0, volatility: 0.012 },
+    { symbol: 'CPNREIT', name: 'CPN Retail Growth', basePrice: 32.5, volatility: 0.008 },
+    { symbol: 'WHAREM', name: 'WHA Industrial REIT', basePrice: 18.0, volatility: 0.01 },
+    { symbol: 'PTTEP', name: 'PTT Exploration', basePrice: 128.5, volatility: 0.03 },
+    { symbol: 'SCB', name: 'Siam Commercial Bank', basePrice: 125.0, volatility: 0.016 },
+    { symbol: 'TRUE', name: 'True Corporation', basePrice: 5.8, volatility: 0.035 },
+    { symbol: 'BBL', name: 'Bangkok Bank', basePrice: 152.0, volatility: 0.014 },
+    { symbol: 'INTUCH', name: 'Intouch Holdings', basePrice: 67.0, volatility: 0.02 },
+    { symbol: 'TOP', name: 'Thai Oil', basePrice: 58.25, volatility: 0.022 },
+    { symbol: 'BEM', name: 'Bangkok Expressway', basePrice: 9.15, volatility: 0.015 },
+    { symbol: 'GULF', name: 'Gulf Energy Development', basePrice: 45.0, volatility: 0.028 },
+  ];
+
+  const historicalRecords = [];
+  const now = new Date();
+  const daysToGenerate = months * 30; // Approximate days per month
+  
+  for (const stock of baseData) {
+    let price = stock.basePrice * 0.95; // Start 5% lower for trend
+    
+    for (let daysAgo = daysToGenerate; daysAgo >= 0; daysAgo--) {
+      const recordDate = new Date(now);
+      recordDate.setDate(recordDate.getDate() - daysAgo);
+      
+      // Skip weekends
+      if (recordDate.getDay() === 0 || recordDate.getDay() === 6) {
+        continue;
+      }
+      
+      // Random walk with slight upward bias
+      const dailyChange = (Math.random() - 0.48) * stock.volatility * price;
+      price += dailyChange;
+      
+      // Add intraday variation
+      const open = price * (1 + (Math.random() - 0.5) * 0.01);
+      const high = price * (1 + Math.random() * 0.015);
+      const low = price * (1 - Math.random() * 0.015);
+      const close = price;
+      
+      historicalRecords.push({
+        stock_symbol: stock.symbol,
+        stock_name: stock.name,
+        open_price: parseFloat(open.toFixed(2)),
+        high_price: parseFloat(high.toFixed(2)),
+        low_price: parseFloat(low.toFixed(2)),
+        close_price: parseFloat(close.toFixed(2)),
+        volume: Math.floor(Math.random() * 50000000) + 10000000,
+        recorded_at: recordDate.toISOString(),
+      });
+    }
+  }
+  
+  return historicalRecords;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -264,7 +328,27 @@ serve(async (req) => {
 
     console.log('Updated stocks:', updatedStocks?.length);
 
-    // Store historical data for charting
+    // Check if we need to backfill historical data
+    const { count: historyCount } = await supabase
+      .from('stock_price_history')
+      .select('*', { count: 'exact', head: true });
+    
+    if (historyCount === 0) {
+      console.log('No historical data found - generating 3 months of history...');
+      const backfillData = generateHistoricalData(3);
+      
+      const { error: backfillError } = await supabase
+        .from('stock_price_history')
+        .insert(backfillData);
+      
+      if (backfillError) {
+        console.error('Backfill error:', backfillError);
+      } else {
+        console.log('Successfully backfilled', backfillData.length, 'historical records');
+      }
+    }
+
+    // Store current data for charting
     const historicalData = stockData.map((stock: any) => ({
       stock_symbol: stock.symbol,
       stock_name: stock.name,
@@ -282,7 +366,6 @@ serve(async (req) => {
 
     if (historyError) {
       console.error('History insert error:', historyError);
-      // Don't throw - we still want to return success if main update worked
     } else {
       console.log('Saved historical data for', historicalData.length, 'stocks');
     }
