@@ -7,6 +7,7 @@ import AISuggestions from "@/components/AISuggestions";
 import LiveMarketFeed from "@/components/LiveMarketFeed";
 import { MyPortfolio } from "@/components/MyPortfolio";
 import { TradingAlerts } from "@/components/TradingAlerts";
+import { Watchlist } from "@/components/Watchlist";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -73,6 +74,11 @@ const Index = () => {
         {/* Trading Alerts */}
         <div className="mb-6">
           <TradingAlerts />
+        </div>
+
+        {/* Watchlist */}
+        <div className="mb-6">
+          <Watchlist />
         </div>
 
         {/* My Portfolio */}
