@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import StockChart from "./StockChart";
@@ -51,10 +51,13 @@ const StockDetails = ({ stock, open, onClose }: StockDetailsProps) => {
               <p className="text-sm text-muted-foreground">{stock.symbol}</p>
             </div>
             <Badge variant={isPositive ? "default" : "destructive"} className="text-lg px-4 py-2">
-              {isPositive ? "+" : ""}
+              {isPositive ? "+": ""}
               {stock.change_percent.toFixed(2)}%
             </Badge>
           </DialogTitle>
+          <DialogDescription>
+            View detailed stock information, historical price charts, and key metrics
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
