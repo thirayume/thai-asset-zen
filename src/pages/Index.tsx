@@ -3,6 +3,8 @@ import PortfolioOverview from "@/components/PortfolioOverview";
 import AssetAllocation from "@/components/AssetAllocation";
 import IncomeStreams from "@/components/IncomeStreams";
 import AssetCards from "@/components/AssetCards";
+import AISuggestions from "@/components/AISuggestions";
+import LiveMarketFeed from "@/components/LiveMarketFeed";
 import { portfolioData } from "@/data/portfolioData";
 
 const Index = () => {
@@ -34,6 +36,12 @@ const Index = () => {
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Portfolio Overview */}
         <PortfolioOverview portfolio={portfolio} />
+
+        {/* AI Suggestions & Live Market Feed */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <AISuggestions />
+          <LiveMarketFeed />
+        </div>
 
         {/* Asset Allocation & Income */}
         <div className="grid lg:grid-cols-2 gap-6">
