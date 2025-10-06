@@ -6,9 +6,75 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Mock data generator for Thai stocks (until real SET API is connected)
+// Stock symbols to track
+const TRACKED_STOCKS = [
+  { symbol: 'PTT', name: 'PTT Public Company' },
+  { symbol: 'KBANK', name: 'Kasikornbank' },
+  { symbol: 'CPALL', name: 'CP All' },
+  { symbol: 'AOT', name: 'Airports of Thailand' },
+  { symbol: 'ADVANC', name: 'Advanced Info Service' },
+  { symbol: 'CPNREIT', name: 'CPN Retail Growth' },
+  { symbol: 'WHAREM', name: 'WHA Industrial REIT' },
+  { symbol: 'PTTEP', name: 'PTT Exploration' },
+  { symbol: 'SCB', name: 'Siam Commercial Bank' },
+  { symbol: 'TRUE', name: 'True Corporation' },
+  { symbol: 'BBL', name: 'Bangkok Bank' },
+  { symbol: 'INTUCH', name: 'Intouch Holdings' },
+  { symbol: 'TOP', name: 'Thai Oil' },
+  { symbol: 'BEM', name: 'Bangkok Expressway' },
+  { symbol: 'GULF', name: 'Gulf Energy Development' },
+];
+
+// Fetch real stock data from SET SMART API
+const fetchRealStockData = async (apiKey: string) => {
+  console.log('Fetching real stock data from SET SMART API...');
+  
+  const stockDataPromises = TRACKED_STOCKS.map(async (stock) => {
+    try {
+      const response = await fetch(
+        `https://api.set.or.th/api/market/stock/${stock.symbol}/quote`,
+        {
+          headers: {
+            'Ocp-Apim-Subscription-Key': apiKey,
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`Failed to fetch ${stock.symbol}: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json();
+      
+      // Parse SET API response
+      return {
+        symbol: stock.symbol,
+        name: stock.name,
+        current_price: parseFloat(data.last || data.close || 0),
+        change_percent: parseFloat(data.change_percent || data.percentChange || 0),
+        volume: parseInt(data.volume || 0),
+        market_cap: parseInt(data.market_cap || data.marketCap || 0),
+        pe_ratio: parseFloat(data.pe_ratio || data.pe || 0),
+        dividend_yield: parseFloat(data.dividend_yield || data.dividendYield || 0),
+        last_updated: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error(`Error fetching ${stock.symbol}:`, error);
+      return null;
+    }
+  });
+
+  const results = await Promise.all(stockDataPromises);
+  return results.filter(data => data !== null);
+};
+
+// Mock data generator (fallback when API unavailable)
 const generateMockStockData = () => {
-  const setStocks = [
+  console.log('Using mock data (SET API unavailable)');
+  
+  const baseData = [
     { symbol: 'PTT', name: 'PTT Public Company', basePrice: 38.5, volatility: 0.02 },
     { symbol: 'KBANK', name: 'Kasikornbank', basePrice: 142.5, volatility: 0.015 },
     { symbol: 'CPALL', name: 'CP All', basePrice: 68.0, volatility: 0.018 },
@@ -26,7 +92,7 @@ const generateMockStockData = () => {
     { symbol: 'GULF', name: 'Gulf Energy Development', basePrice: 45.0, volatility: 0.028 },
   ];
 
-  return setStocks.map(stock => {
+  return baseData.map(stock => {
     const changePercent = (Math.random() - 0.5) * 2 * stock.volatility * 100;
     const currentPrice = stock.basePrice * (1 + changePercent / 100);
     
@@ -52,6 +118,7 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const SET_SMART_API_KEY = Deno.env.get('SET_SMART_API_KEY');
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Missing Supabase credentials');
@@ -59,9 +126,40 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Generate mock stock data
-    const stockData = generateMockStockData();
-    console.log('Generated stock data for', stockData.length, 'symbols');
+    let stockData;
+    let usingMockData = false;
+
+    // Try to fetch real data if API key is available
+    if (SET_SMART_API_KEY) {
+      try {
+        stockData = await fetchRealStockData(SET_SMART_API_KEY);
+        
+        if (stockData.length === 0) {
+          console.warn('No data returned from SET API, falling back to mock data');
+          stockData = generateMockStockData();
+          usingMockData = true;
+        } else {
+          console.log('Successfully fetched real stock data for', stockData.length, 'symbols');
+        }
+      } catch (apiError) {
+        console.error('SET API error, falling back to mock data:', apiError);
+        stockData = generateMockStockData();
+        usingMockData = true;
+        
+        // Create alert for API failure
+        await supabase
+          .from('market_alerts')
+          .insert({
+            alert_type: 'system',
+            message: 'SET API temporarily unavailable - using cached data',
+            severity: 'warning'
+          });
+      }
+    } else {
+      console.warn('SET_SMART_API_KEY not configured, using mock data');
+      stockData = generateMockStockData();
+      usingMockData = true;
+    }
 
     // Upsert stock data
     const { data: updatedStocks, error: upsertError } = await supabase
@@ -79,22 +177,25 @@ serve(async (req) => {
 
     console.log('Updated stocks:', updatedStocks?.length);
 
-    // Create alert for significant changes
-    const significantChanges = stockData.filter(s => Math.abs(s.change_percent) > 2);
-    if (significantChanges.length > 0) {
-      await supabase
-        .from('market_alerts')
-        .insert({
-          alert_type: 'price_movement',
-          message: `${significantChanges.length} stocks with significant price changes (>2%)`,
-          severity: 'warning'
-        });
+    // Create alert for significant changes (only for real data)
+    if (!usingMockData) {
+      const significantChanges = stockData.filter(s => Math.abs(s.change_percent) > 2);
+      if (significantChanges.length > 0) {
+        await supabase
+          .from('market_alerts')
+          .insert({
+            alert_type: 'price_movement',
+            message: `${significantChanges.length} stocks with significant price changes (>2%)`,
+            severity: 'warning'
+          });
+      }
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         updated: updatedStocks?.length || 0,
+        usingMockData,
         timestamp: new Date().toISOString()
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
