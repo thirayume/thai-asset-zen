@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Shield } from "lucide-react";
 import AISuggestions from "@/components/AISuggestions";
 import LiveMarketFeed from "@/components/LiveMarketFeed";
 import { MyPortfolio } from "@/components/MyPortfolio";
@@ -14,13 +14,23 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [userEmail, setUserEmail] = useState<string>("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserEmail(user.email || "");
+        
+        // Check if user is admin
+        const { data: hasAdminRole } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin'
+        });
+        setIsAdmin(hasAdminRole || false);
       }
-    });
+    };
+    checkUser();
   }, []);
 
   const handleLogout = async () => {
@@ -58,6 +68,12 @@ const Index = () => {
               <User className="h-4 w-4" />
               <span>{userEmail}</span>
             </div>
+            {isAdmin && (
+              <Button variant="default" onClick={() => navigate("/admin")}>
+                <Shield className="h-4 w-4 mr-2" />
+                Admin Panel
+              </Button>
+            )}
             <Button variant="outline" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               ออกจากระบบ / Logout
