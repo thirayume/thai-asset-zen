@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.177.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,18 +27,78 @@ const TRACKED_STOCKS = [
   { symbol: 'GULF', name: 'Gulf Energy Development' },
 ];
 
-// Fetch real stock data from SET SMART API
-const fetchRealStockData = async (apiKey: string) => {
-  console.log('Fetching real stock data from SET SMART API...');
+// Generate HMAC-SHA256 signature for Settrade API
+const generateSignature = async (appSecret: string, params: string, timestamp: number): Promise<string> => {
+  const message = `${params}${timestamp}`;
+  const key = new TextEncoder().encode(appSecret);
+  const data = new TextEncoder().encode(message);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+};
+
+// Authenticate with Settrade API
+const authenticateSettrade = async (username: string, appId: string, appSecret: string): Promise<string | null> => {
+  try {
+    const timestamp = Date.now();
+    const params = '';
+    const signature = await generateSignature(appSecret, params, timestamp);
+    
+    console.log('Authenticating with Settrade API...');
+    
+    const response = await fetch(
+      'https://open-api.settrade.com/api/oam/v1/broker-apps/login',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiKey: appId,
+          params: params,
+          signature: signature,
+          timestamp: timestamp
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Settrade authentication failed:', response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    console.log('Settrade authentication successful');
+    return data.accessToken || data.token;
+  } catch (error) {
+    console.error('Settrade authentication error:', error);
+    return null;
+  }
+};
+
+// Fetch real stock data from Settrade API
+const fetchSettradeStockData = async (accessToken: string) => {
+  console.log('Fetching real stock data from Settrade API...');
   
   const stockDataPromises = TRACKED_STOCKS.map(async (stock) => {
     try {
+      // Fetch stock quote from Settrade
       const response = await fetch(
-        `https://api.set.or.th/api/market/stock/${stock.symbol}/quote`,
+        `https://open-api.settrade.com/api/market/v2/quote/${stock.symbol}`,
         {
           headers: {
-            'Ocp-Apim-Subscription-Key': apiKey,
-            'Accept': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
           },
         }
       );
@@ -48,17 +110,20 @@ const fetchRealStockData = async (apiKey: string) => {
 
       const data = await response.json();
       
-      // Parse SET API response
-      const currentPrice = parseFloat(data.last || data.close || 0);
+      // Parse Settrade API response
+      const currentPrice = parseFloat(data.last || data.lastPrice || data.close || 0);
+      const prevClose = parseFloat(data.prior || data.previousClose || currentPrice);
+      const changePercent = prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0;
+      
       return {
         symbol: stock.symbol,
         name: stock.name,
         current_price: currentPrice,
-        change_percent: parseFloat(data.change_percent || data.percentChange || 0),
-        volume: parseInt(data.volume || 0),
-        market_cap: parseInt(data.market_cap || data.marketCap || 0),
-        pe_ratio: parseFloat(data.pe_ratio || data.pe || 0),
-        dividend_yield: parseFloat(data.dividend_yield || data.dividendYield || 0),
+        change_percent: parseFloat(changePercent.toFixed(2)),
+        volume: parseInt(data.volume || data.totalVolume || 0),
+        market_cap: parseInt(data.marketCap || 0),
+        pe_ratio: parseFloat(data.pe || data.peRatio || 0),
+        dividend_yield: parseFloat(data.dividendYield || 0),
         last_updated: new Date().toISOString(),
         open_price: parseFloat(data.open || currentPrice),
         high_price: parseFloat(data.high || currentPrice),
@@ -139,20 +204,32 @@ serve(async (req) => {
     let stockData;
     let usingMockData = false;
 
-    // Try to fetch real data if API key is available
-    if (SET_SMART_API_KEY) {
+    const SETTRADE_USERNAME = Deno.env.get('SETTRADE_USERNAME');
+    const SETTRADE_APP_ID = Deno.env.get('SETTRADE_APP_ID');
+    const SETTRADE_APP_SECRET = Deno.env.get('SETTRADE_APP_SECRET');
+
+    // Try to fetch from Settrade API first
+    if (SETTRADE_USERNAME && SETTRADE_APP_ID && SETTRADE_APP_SECRET) {
       try {
-        stockData = await fetchRealStockData(SET_SMART_API_KEY);
+        const accessToken = await authenticateSettrade(SETTRADE_USERNAME, SETTRADE_APP_ID, SETTRADE_APP_SECRET);
         
-        if (stockData.length === 0) {
-          console.warn('No data returned from SET API, falling back to mock data');
+        if (accessToken) {
+          stockData = await fetchSettradeStockData(accessToken);
+          
+          if (stockData.length === 0) {
+            console.warn('No data returned from Settrade API, falling back to mock data');
+            stockData = generateMockStockData();
+            usingMockData = true;
+          } else {
+            console.log('Successfully fetched real stock data from Settrade for', stockData.length, 'symbols');
+          }
+        } else {
+          console.warn('Settrade authentication failed, falling back to mock data');
           stockData = generateMockStockData();
           usingMockData = true;
-        } else {
-          console.log('Successfully fetched real stock data for', stockData.length, 'symbols');
         }
       } catch (apiError) {
-        console.error('SET API error, falling back to mock data:', apiError);
+        console.error('Settrade API error, falling back to mock data:', apiError);
         stockData = generateMockStockData();
         usingMockData = true;
         
@@ -161,12 +238,12 @@ serve(async (req) => {
           .from('market_alerts')
           .insert({
             alert_type: 'system',
-            message: 'SET API temporarily unavailable - using cached data',
+            message: 'Settrade API temporarily unavailable - using cached data',
             severity: 'warning'
           });
       }
     } else {
-      console.warn('SET_SMART_API_KEY not configured, using mock data');
+      console.warn('Settrade credentials not configured, using mock data');
       stockData = generateMockStockData();
       usingMockData = true;
     }
@@ -188,7 +265,7 @@ serve(async (req) => {
     console.log('Updated stocks:', updatedStocks?.length);
 
     // Store historical data for charting
-    const historicalData = stockData.map(stock => ({
+    const historicalData = stockData.map((stock: any) => ({
       stock_symbol: stock.symbol,
       stock_name: stock.name,
       open_price: stock.open_price || stock.current_price,
@@ -212,7 +289,7 @@ serve(async (req) => {
 
     // Create alert for significant changes (only for real data)
     if (!usingMockData) {
-      const significantChanges = stockData.filter(s => Math.abs(s.change_percent) > 2);
+      const significantChanges = stockData.filter((s: any) => Math.abs(s.change_percent) > 2);
       if (significantChanges.length > 0) {
         await supabase
           .from('market_alerts')
