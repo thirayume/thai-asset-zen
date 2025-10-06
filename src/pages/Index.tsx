@@ -9,6 +9,8 @@ import { MyPortfolio } from "@/components/MyPortfolio";
 import { TradingAlerts } from "@/components/TradingAlerts";
 import { Watchlist } from "@/components/Watchlist";
 import TradingSignals from "@/components/TradingSignals";
+import { GoldPrices } from "@/components/GoldPrices";
+import { MyGoldPositions } from "@/components/MyGoldPositions";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -41,6 +43,10 @@ const Index = () => {
       // Refresh stock prices
       const { error: pricesError } = await supabase.functions.invoke('update-stock-prices');
       if (pricesError) throw pricesError;
+
+      // Refresh gold prices
+      const { error: goldError } = await supabase.functions.invoke('update-gold-prices');
+      if (goldError) throw goldError;
 
       // Refresh trading signals
       const { error: signalsError } = await supabase.functions.invoke('generate-trading-signals');
@@ -144,6 +150,12 @@ const Index = () => {
         {/* Watchlist */}
         <div className="mb-6">
           <Watchlist />
+        </div>
+
+        {/* Gold Prices and Positions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <GoldPrices />
+          <MyGoldPositions />
         </div>
 
         {/* My Portfolio */}

@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      gold_prices: {
+        Row: {
+          created_at: string | null
+          gold_type: string
+          id: string
+          price_per_baht: number
+          price_per_gram: number
+          price_type: string
+          recorded_at: string
+        }
+        Insert: {
+          created_at?: string | null
+          gold_type: string
+          id?: string
+          price_per_baht: number
+          price_per_gram: number
+          price_type: string
+          recorded_at?: string
+        }
+        Update: {
+          created_at?: string | null
+          gold_type?: string
+          id?: string
+          price_per_baht?: number
+          price_per_gram?: number
+          price_type?: string
+          recorded_at?: string
+        }
+        Relationships: []
+      }
       investment_suggestions: {
         Row: {
           confidence_score: number | null
@@ -382,6 +412,65 @@ export type Database = {
           target_price?: number | null
         }
         Relationships: []
+      }
+      user_gold_positions: {
+        Row: {
+          created_at: string | null
+          gold_type: string
+          id: string
+          notes: string | null
+          portfolio_id: string | null
+          purchase_date: string
+          purchase_price_per_baht: number
+          sold_at: string | null
+          sold_price_per_baht: number | null
+          status: string | null
+          total_cost: number
+          user_id: string
+          weight_in_baht: number
+          weight_in_grams: number
+        }
+        Insert: {
+          created_at?: string | null
+          gold_type: string
+          id?: string
+          notes?: string | null
+          portfolio_id?: string | null
+          purchase_date?: string
+          purchase_price_per_baht: number
+          sold_at?: string | null
+          sold_price_per_baht?: number | null
+          status?: string | null
+          total_cost: number
+          user_id: string
+          weight_in_baht: number
+          weight_in_grams: number
+        }
+        Update: {
+          created_at?: string | null
+          gold_type?: string
+          id?: string
+          notes?: string | null
+          portfolio_id?: string | null
+          purchase_date?: string
+          purchase_price_per_baht?: number
+          sold_at?: string | null
+          sold_price_per_baht?: number | null
+          status?: string | null
+          total_cost?: number
+          user_id?: string
+          weight_in_baht?: number
+          weight_in_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_gold_positions_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "user_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_portfolios: {
         Row: {
