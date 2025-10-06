@@ -377,6 +377,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_cron_jobs: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active: boolean
+          command: string
+          database: string
+          jobid: number
+          jobname: string
+          nodename: string
+          nodeport: number
+          schedule: string
+          username: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "member"
