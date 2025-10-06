@@ -6,6 +6,7 @@ import { LogOut, User } from "lucide-react";
 import AISuggestions from "@/components/AISuggestions";
 import LiveMarketFeed from "@/components/LiveMarketFeed";
 import { MyPortfolio } from "@/components/MyPortfolio";
+import { TradingAlerts } from "@/components/TradingAlerts";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -67,6 +68,11 @@ const Index = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <AISuggestions />
           <LiveMarketFeed />
+        </div>
+
+        {/* Trading Alerts */}
+        <div className="mb-6">
+          <TradingAlerts />
         </div>
 
         {/* My Portfolio */}

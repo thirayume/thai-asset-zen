@@ -182,6 +182,51 @@ export type Database = {
         }
         Relationships: []
       }
+      trade_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string | null
+          current_price: number | null
+          id: string
+          is_read: boolean | null
+          message: string
+          position_id: string | null
+          stock_name: string
+          stock_symbol: string
+          trigger_price: number | null
+          user_id: string
+          watchlist_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string | null
+          current_price?: number | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          position_id?: string | null
+          stock_name: string
+          stock_symbol: string
+          trigger_price?: number | null
+          user_id: string
+          watchlist_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string | null
+          current_price?: number | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          position_id?: string | null
+          stock_name?: string
+          stock_symbol?: string
+          trigger_price?: number | null
+          user_id?: string
+          watchlist_id?: string | null
+        }
+        Relationships: []
+      }
       user_portfolios: {
         Row: {
           created_at: string | null
