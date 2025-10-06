@@ -31,6 +31,7 @@ export type Database = {
           stop_loss: number | null
           suggestion_type: string
           target_audience: string | null
+          user_id: string | null
         }
         Insert: {
           confidence_score?: number | null
@@ -48,6 +49,7 @@ export type Database = {
           stop_loss?: number | null
           suggestion_type: string
           target_audience?: string | null
+          user_id?: string | null
         }
         Update: {
           confidence_score?: number | null
@@ -65,6 +67,7 @@ export type Database = {
           stop_loss?: number | null
           suggestion_type?: string
           target_audience?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -77,6 +80,7 @@ export type Database = {
           message: string
           severity: string | null
           stock_symbol: string | null
+          user_id: string | null
         }
         Insert: {
           alert_type: string
@@ -86,6 +90,7 @@ export type Database = {
           message: string
           severity?: string | null
           stock_symbol?: string | null
+          user_id?: string | null
         }
         Update: {
           alert_type?: string
@@ -95,6 +100,43 @@ export type Database = {
           message?: string
           severity?: string | null
           stock_symbol?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          allow_high_risk: boolean | null
+          created_at: string | null
+          default_budget: number | null
+          email: string | null
+          full_name: string | null
+          id: string
+          max_position_size_percent: number | null
+          preferred_language: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          allow_high_risk?: boolean | null
+          created_at?: string | null
+          default_budget?: number | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          max_position_size_percent?: number | null
+          preferred_language?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          allow_high_risk?: boolean | null
+          created_at?: string | null
+          default_budget?: number | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          max_position_size_percent?: number | null
+          preferred_language?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -140,6 +182,140 @@ export type Database = {
         }
         Relationships: []
       }
+      user_portfolios: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string | null
+          total_cash: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          total_cash?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          total_cash?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_positions: {
+        Row: {
+          average_entry_price: number
+          created_at: string | null
+          id: string
+          notes: string | null
+          portfolio_id: string | null
+          purchase_date: string
+          shares_owned: number
+          sold_at: string | null
+          sold_price: number | null
+          status: string | null
+          stock_name: string
+          stock_symbol: string
+          stop_loss: number | null
+          target_price: number | null
+          user_id: string
+        }
+        Insert: {
+          average_entry_price: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          portfolio_id?: string | null
+          purchase_date: string
+          shares_owned: number
+          sold_at?: string | null
+          sold_price?: number | null
+          status?: string | null
+          stock_name: string
+          stock_symbol: string
+          stop_loss?: number | null
+          target_price?: number | null
+          user_id: string
+        }
+        Update: {
+          average_entry_price?: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          portfolio_id?: string | null
+          purchase_date?: string
+          shares_owned?: number
+          sold_at?: string | null
+          sold_price?: number | null
+          status?: string | null
+          stock_name?: string
+          stock_symbol?: string
+          stop_loss?: number | null
+          target_price?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_positions_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "user_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_watchlist: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          stock_name: string
+          stock_symbol: string
+          target_entry_price: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          stock_name: string
+          stock_symbol: string
+          target_entry_price?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          stock_name?: string
+          stock_symbol?: string
+          target_entry_price?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -149,9 +325,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -278,6 +461,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "member"],
+    },
   },
 } as const
