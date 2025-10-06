@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Shield } from "lucide-react";
+import { LogOut, User, Shield, RefreshCw } from "lucide-react";
 import AISuggestions from "@/components/AISuggestions";
 import LiveMarketFeed from "@/components/LiveMarketFeed";
 import { MyPortfolio } from "@/components/MyPortfolio";
@@ -16,6 +16,7 @@ const Index = () => {
   const { toast } = useToast();
   const [userEmail, setUserEmail] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -33,6 +34,40 @@ const Index = () => {
     };
     checkUser();
   }, []);
+
+  const handleRefreshAll = async () => {
+    setRefreshing(true);
+    try {
+      // Refresh stock prices
+      const { error: pricesError } = await supabase.functions.invoke('update-stock-prices');
+      if (pricesError) throw pricesError;
+
+      // Refresh trading signals
+      const { error: signalsError } = await supabase.functions.invoke('generate-trading-signals');
+      if (signalsError) throw signalsError;
+
+      // Check trading alerts
+      const { error: alertsError } = await supabase.functions.invoke('check-trading-alerts');
+      if (alertsError) throw alertsError;
+
+      toast({
+        title: "สำเร็จ / Success",
+        description: "อัพเดทข้อมูลทั้งหมดเรียบร้อย / All data refreshed successfully",
+      });
+
+      // Reload the page to show updated data
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      console.error('Refresh error:', error);
+      toast({
+        title: "ข้อผิดพลาด / Error",
+        description: "ไม่สามารถอัพเดทข้อมูลได้ / Failed to refresh data",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -69,6 +104,14 @@ const Index = () => {
               <User className="h-4 w-4" />
               <span>{userEmail}</span>
             </div>
+            <Button 
+              variant="secondary" 
+              onClick={handleRefreshAll}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh All
+            </Button>
             {isAdmin && (
               <Button variant="default" onClick={() => navigate("/admin")}>
                 <Shield className="h-4 w-4 mr-2" />
