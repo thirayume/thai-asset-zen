@@ -242,39 +242,51 @@ export type Database = {
       thai_stocks: {
         Row: {
           change_percent: number | null
+          close_price: number | null
           created_at: string | null
           current_price: number | null
           dividend_yield: number | null
+          high_price: number | null
           id: string
           last_updated: string | null
+          low_price: number | null
           market_cap: number | null
           name: string
+          open_price: number | null
           pe_ratio: number | null
           symbol: string
           volume: number | null
         }
         Insert: {
           change_percent?: number | null
+          close_price?: number | null
           created_at?: string | null
           current_price?: number | null
           dividend_yield?: number | null
+          high_price?: number | null
           id?: string
           last_updated?: string | null
+          low_price?: number | null
           market_cap?: number | null
           name: string
+          open_price?: number | null
           pe_ratio?: number | null
           symbol: string
           volume?: number | null
         }
         Update: {
           change_percent?: number | null
+          close_price?: number | null
           created_at?: string | null
           current_price?: number | null
           dividend_yield?: number | null
+          high_price?: number | null
           id?: string
           last_updated?: string | null
+          low_price?: number | null
           market_cap?: number | null
           name?: string
+          open_price?: number | null
           pe_ratio?: number | null
           symbol?: string
           volume?: number | null
