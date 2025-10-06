@@ -14,13 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      investment_suggestions: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          expires_at: string | null
+          holding_period: string | null
+          id: string
+          profit_potential: number | null
+          reasoning: string | null
+          recommended_entry: number | null
+          recommended_exit: number | null
+          risk_level: string
+          stock_name: string
+          stock_symbol: string
+          stop_loss: number | null
+          suggestion_type: string
+          target_audience: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          holding_period?: string | null
+          id?: string
+          profit_potential?: number | null
+          reasoning?: string | null
+          recommended_entry?: number | null
+          recommended_exit?: number | null
+          risk_level: string
+          stock_name: string
+          stock_symbol: string
+          stop_loss?: number | null
+          suggestion_type: string
+          target_audience?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          holding_period?: string | null
+          id?: string
+          profit_potential?: number | null
+          reasoning?: string | null
+          recommended_entry?: number | null
+          recommended_exit?: number | null
+          risk_level?: string
+          stock_name?: string
+          stock_symbol?: string
+          stop_loss?: number | null
+          suggestion_type?: string
+          target_audience?: string | null
+        }
+        Relationships: []
+      }
+      market_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          severity: string | null
+          stock_symbol: string | null
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          severity?: string | null
+          stock_symbol?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          severity?: string | null
+          stock_symbol?: string | null
+        }
+        Relationships: []
+      }
+      thai_stocks: {
+        Row: {
+          change_percent: number | null
+          created_at: string | null
+          current_price: number | null
+          dividend_yield: number | null
+          id: string
+          last_updated: string | null
+          market_cap: number | null
+          name: string
+          pe_ratio: number | null
+          symbol: string
+          volume: number | null
+        }
+        Insert: {
+          change_percent?: number | null
+          created_at?: string | null
+          current_price?: number | null
+          dividend_yield?: number | null
+          id?: string
+          last_updated?: string | null
+          market_cap?: number | null
+          name: string
+          pe_ratio?: number | null
+          symbol: string
+          volume?: number | null
+        }
+        Update: {
+          change_percent?: number | null
+          created_at?: string | null
+          current_price?: number | null
+          dividend_yield?: number | null
+          id?: string
+          last_updated?: string | null
+          market_cap?: number | null
+          name?: string
+          pe_ratio?: number | null
+          symbol?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_suggestions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
