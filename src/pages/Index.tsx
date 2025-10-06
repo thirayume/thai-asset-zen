@@ -1,57 +1,79 @@
-import { useState } from "react";
-import PortfolioOverview from "@/components/PortfolioOverview";
-import AssetAllocation from "@/components/AssetAllocation";
-import IncomeStreams from "@/components/IncomeStreams";
-import AssetCards from "@/components/AssetCards";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { LogOut, User } from "lucide-react";
 import AISuggestions from "@/components/AISuggestions";
 import LiveMarketFeed from "@/components/LiveMarketFeed";
-import { portfolioData } from "@/data/portfolioData";
+import { MyPortfolio } from "@/components/MyPortfolio";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
-  const [portfolio] = useState(portfolioData);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [userEmail, setUserEmail] = useState<string>("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserEmail(user.email || "");
+      }
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "ข้อผิดพลาด / Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "ออกจากระบบ / Logged out",
+        description: "ออกจากระบบสำเร็จ / Successfully logged out",
+      });
+      navigate("/auth");
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-                Thai Portfolio Dashboard
-              </h1>
-              <p className="text-sm text-muted-foreground">Multi-Asset Passive Income Tracker</p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent mb-2">
+              Thai Portfolio Tracker
+            </h1>
+            <p className="text-muted-foreground">
+              Last updated: {new Date().toLocaleString('th-TH')}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <User className="h-4 w-4" />
+              <span>{userEmail}</span>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Last Updated</p>
-                <p className="text-sm font-mono">{new Date().toLocaleTimeString('th-TH')}</p>
-              </div>
-              <div className="h-2 w-2 rounded-full bg-profit animate-pulse" />
-            </div>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              ออกจากระบบ / Logout
+            </Button>
           </div>
         </div>
-      </header>
 
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Portfolio Overview */}
-        <PortfolioOverview portfolio={portfolio} />
-
-        {/* AI Suggestions & Live Market Feed */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        {/* AI Suggestions and Market Feed */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <AISuggestions />
           <LiveMarketFeed />
         </div>
 
-        {/* Asset Allocation & Income */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          <AssetAllocation assetAllocation={portfolio.assetAllocation} />
-          <IncomeStreams assetAllocation={portfolio.assetAllocation} />
+        {/* My Portfolio */}
+        <div className="mb-6">
+          <MyPortfolio />
         </div>
-
-        {/* Asset Cards */}
-        <AssetCards assetAllocation={portfolio.assetAllocation} />
-      </main>
+      </div>
     </div>
   );
 };
