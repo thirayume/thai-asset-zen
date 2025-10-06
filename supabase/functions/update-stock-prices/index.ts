@@ -49,16 +49,20 @@ const fetchRealStockData = async (apiKey: string) => {
       const data = await response.json();
       
       // Parse SET API response
+      const currentPrice = parseFloat(data.last || data.close || 0);
       return {
         symbol: stock.symbol,
         name: stock.name,
-        current_price: parseFloat(data.last || data.close || 0),
+        current_price: currentPrice,
         change_percent: parseFloat(data.change_percent || data.percentChange || 0),
         volume: parseInt(data.volume || 0),
         market_cap: parseInt(data.market_cap || data.marketCap || 0),
         pe_ratio: parseFloat(data.pe_ratio || data.pe || 0),
         dividend_yield: parseFloat(data.dividend_yield || data.dividendYield || 0),
         last_updated: new Date().toISOString(),
+        open_price: parseFloat(data.open || currentPrice),
+        high_price: parseFloat(data.high || currentPrice),
+        low_price: parseFloat(data.low || currentPrice),
       };
     } catch (error) {
       console.error(`Error fetching ${stock.symbol}:`, error);
@@ -95,6 +99,9 @@ const generateMockStockData = () => {
   return baseData.map(stock => {
     const changePercent = (Math.random() - 0.5) * 2 * stock.volatility * 100;
     const currentPrice = stock.basePrice * (1 + changePercent / 100);
+    const high = currentPrice * (1 + Math.random() * 0.01);
+    const low = currentPrice * (1 - Math.random() * 0.01);
+    const open = currentPrice * (1 + (Math.random() - 0.5) * 0.005);
     
     return {
       symbol: stock.symbol,
@@ -106,6 +113,9 @@ const generateMockStockData = () => {
       pe_ratio: parseFloat((Math.random() * 20 + 8).toFixed(2)),
       dividend_yield: parseFloat((Math.random() * 0.05 + 0.01).toFixed(4)),
       last_updated: new Date().toISOString(),
+      open_price: parseFloat(open.toFixed(2)),
+      high_price: parseFloat(high.toFixed(2)),
+      low_price: parseFloat(low.toFixed(2)),
     };
   });
 };
@@ -176,6 +186,29 @@ serve(async (req) => {
     }
 
     console.log('Updated stocks:', updatedStocks?.length);
+
+    // Store historical data for charting
+    const historicalData = stockData.map(stock => ({
+      stock_symbol: stock.symbol,
+      stock_name: stock.name,
+      open_price: stock.open_price || stock.current_price,
+      high_price: stock.high_price || stock.current_price,
+      low_price: stock.low_price || stock.current_price,
+      close_price: stock.current_price,
+      volume: stock.volume,
+      recorded_at: new Date().toISOString(),
+    }));
+
+    const { error: historyError } = await supabase
+      .from('stock_price_history')
+      .insert(historicalData);
+
+    if (historyError) {
+      console.error('History insert error:', historyError);
+      // Don't throw - we still want to return success if main update worked
+    } else {
+      console.log('Saved historical data for', historicalData.length, 'stocks');
+    }
 
     // Create alert for significant changes (only for real data)
     if (!usingMockData) {

@@ -1,10 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Activity } from "lucide-react";
-import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { TrendingUp, TrendingDown, Activity, BarChart3 } from "lucide-react";
+import { useEffect, useState } from "react";
+import StockDetails from "./StockDetails";
 
 const LiveMarketFeed = () => {
+  const [selectedStock, setSelectedStock] = useState<any | null>(null);
+  
   const { data: stocks, refetch } = useQuery({
     queryKey: ['thai-stocks'],
     queryFn: async () => {
@@ -51,7 +55,8 @@ const LiveMarketFeed = () => {
         {stocks?.map((stock) => (
           <div 
             key={stock.symbol}
-            className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/50 hover:border-primary/30 transition-all"
+            className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/50 hover:border-primary/30 transition-all cursor-pointer"
+            onClick={() => setSelectedStock(stock)}
           >
             <div className="flex-1">
               <div className="flex items-center gap-2">
@@ -65,17 +70,37 @@ const LiveMarketFeed = () => {
               <p className="text-sm text-muted-foreground">{stock.name}</p>
             </div>
             
-            <div className="text-right">
-              <p className="text-lg font-bold">฿{stock.current_price}</p>
-              <p className={`text-sm font-medium ${
-                stock.change_percent >= 0 ? 'text-profit' : 'text-loss'
-              }`}>
-                {stock.change_percent >= 0 ? '+' : ''}{stock.change_percent}%
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-lg font-bold">฿{stock.current_price}</p>
+                <p className={`text-sm font-medium ${
+                  stock.change_percent >= 0 ? 'text-profit' : 'text-loss'
+                }`}>
+                  {stock.change_percent >= 0 ? '+' : ''}{stock.change_percent}%
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedStock(stock);
+                }}
+              >
+                <BarChart3 className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         ))}
       </div>
+      
+      {selectedStock && (
+        <StockDetails
+          stock={selectedStock}
+          open={!!selectedStock}
+          onClose={() => setSelectedStock(null)}
+        />
+      )}
     </Card>
   );
 };

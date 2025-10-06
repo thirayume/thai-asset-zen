@@ -170,6 +170,45 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_price_history: {
+        Row: {
+          close_price: number | null
+          created_at: string | null
+          high_price: number | null
+          id: string
+          low_price: number | null
+          open_price: number | null
+          recorded_at: string
+          stock_name: string
+          stock_symbol: string
+          volume: number | null
+        }
+        Insert: {
+          close_price?: number | null
+          created_at?: string | null
+          high_price?: number | null
+          id?: string
+          low_price?: number | null
+          open_price?: number | null
+          recorded_at: string
+          stock_name: string
+          stock_symbol: string
+          volume?: number | null
+        }
+        Update: {
+          close_price?: number | null
+          created_at?: string | null
+          high_price?: number | null
+          id?: string
+          low_price?: number | null
+          open_price?: number | null
+          recorded_at?: string
+          stock_name?: string
+          stock_symbol?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           created_at: string | null
