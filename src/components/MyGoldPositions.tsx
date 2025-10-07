@@ -69,23 +69,27 @@ export const MyGoldPositions = () => {
   };
 
   const getCurrentPrice = (goldType: string) => {
-    return currentPrices?.find(p => p.gold_type === goldType)?.price_per_baht || 0;
+    if (!currentPrices || currentPrices.length === 0) return null;
+    return currentPrices.find(p => p.gold_type === goldType)?.price_per_baht || null;
   };
 
   const calculateProfit = (position: GoldPosition) => {
     const currentPrice = getCurrentPrice(position.gold_type);
+    if (currentPrice === null) return null;
     const currentValue = currentPrice * position.weight_in_baht;
     return currentValue - position.total_cost;
   };
 
   const calculateProfitPercent = (position: GoldPosition) => {
     const profit = calculateProfit(position);
+    if (profit === null) return null;
     return (profit / position.total_cost) * 100;
   };
 
   const totalInvestment = positions?.reduce((sum, pos) => sum + pos.total_cost, 0) || 0;
   const totalCurrentValue = positions?.reduce((sum, pos) => {
     const currentPrice = getCurrentPrice(pos.gold_type);
+    if (currentPrice === null) return sum;
     return sum + (currentPrice * pos.weight_in_baht);
   }, 0) || 0;
   const totalProfit = totalCurrentValue - totalInvestment;
@@ -171,9 +175,9 @@ export const MyGoldPositions = () => {
                         {position.weight_in_grams.toFixed(3)} grams
                       </div>
                     </div>
-                    <Badge className={profit >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}>
-                      {profit >= 0 ? '+' : ''}{profitPercent.toFixed(2)}%
-                    </Badge>
+                     <Badge className={profit !== null && profit >= 0 ? 'bg-green-500/10 text-green-500' : profit !== null ? 'bg-red-500/10 text-red-500' : 'bg-muted'}>
+                       {profitPercent !== null ? `${profit! >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%` : 'N/A'}
+                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -181,20 +185,22 @@ export const MyGoldPositions = () => {
                       <div className="text-muted-foreground mb-1">Purchase Price</div>
                       <div className="font-medium">{formatCurrency(position.purchase_price_per_baht)}/baht</div>
                     </div>
-                    <div>
-                      <div className="text-muted-foreground mb-1">Current Price</div>
-                      <div className="font-medium">{formatCurrency(currentPrice)}/baht</div>
-                    </div>
+                     <div>
+                       <div className="text-muted-foreground mb-1">Current Price</div>
+                       <div className="font-medium">
+                         {currentPrice !== null ? `${formatCurrency(currentPrice)}/baht` : 'Price unavailable'}
+                       </div>
+                     </div>
                     <div>
                       <div className="text-muted-foreground mb-1">Total Cost</div>
                       <div className="font-medium">{formatCurrency(position.total_cost)}</div>
                     </div>
-                    <div>
-                      <div className="text-muted-foreground mb-1">P/L</div>
-                      <div className={`font-medium ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
-                      </div>
-                    </div>
+                     <div>
+                       <div className="text-muted-foreground mb-1">P/L</div>
+                       <div className={`font-medium ${profit !== null && profit >= 0 ? 'text-green-500' : profit !== null ? 'text-red-500' : ''}`}>
+                         {profit !== null ? `${profit >= 0 ? '+' : ''}${formatCurrency(profit)}` : 'N/A'}
+                       </div>
+                     </div>
                   </div>
 
                   {position.notes && (

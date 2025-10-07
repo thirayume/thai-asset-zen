@@ -36,23 +36,26 @@ const GoldPriceChart = ({
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1M");
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showMA20, setShowMA20] = useState(true);
 
   useEffect(() => {
     const fetchHistoricalData = async () => {
       setLoading(true);
+      setError(null);
       
       const { startDate } = getDateRange(selectedPeriod);
       
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from("gold_price_history")
         .select("*")
         .eq("gold_type", goldType)
         .gte("recorded_at", startDate.toISOString())
         .order("recorded_at", { ascending: true });
 
-      if (error) {
-        console.error("Error fetching historical gold data:", error);
+      if (fetchError) {
+        console.error("Error fetching historical gold data:", fetchError);
+        setError("Failed to load historical data");
         setLoading(false);
         return;
       }
@@ -168,7 +171,14 @@ const GoldPriceChart = ({
         </div>
       </CardHeader>
       <CardContent>
-        {chartData.length === 0 ? (
+        {error ? (
+          <div className="h-96 flex flex-col items-center justify-center gap-4">
+            <p className="text-destructive">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+              Retry
+            </Button>
+          </div>
+        ) : chartData.length === 0 ? (
           <div className="h-96 flex items-center justify-center text-muted-foreground">
             No historical data available for {formatTimePeriod(selectedPeriod)}
           </div>

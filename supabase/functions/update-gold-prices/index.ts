@@ -195,12 +195,15 @@ serve(async (req) => {
     // Fetch gold prices
     const goldPrices = await fetchGoldPrices();
     
-    console.log('Inserting', goldPrices.length, 'price records into database...');
+    console.log('Upserting', goldPrices.length, 'price records into database...');
     
-    // Insert into current gold_prices table (for latest prices)
+    // Upsert into current gold_prices table (replaces old prices with new ones)
     const { data: insertedPrices, error: insertError } = await supabase
       .from('gold_prices')
-      .insert(goldPrices)
+      .upsert(goldPrices, { 
+        onConflict: 'gold_type,price_type',
+        ignoreDuplicates: false 
+      })
       .select();
 
     if (insertError) {

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, TrendingDown, Coins } from "lucide-react";
@@ -17,7 +18,7 @@ interface GoldPrice {
 }
 
 export const GoldPrices = () => {
-  const { data: goldPrices, isLoading } = useQuery({
+  const { data: goldPrices, isLoading, error, refetch } = useQuery({
     queryKey: ['gold-prices'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -65,6 +66,25 @@ export const GoldPrices = () => {
         </CardHeader>
         <CardContent>
           <Skeleton className="h-[400px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full border-destructive">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Coins className="w-5 h-5 text-yellow-500" />
+            <CardTitle>Gold Prices (Thailand)</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-destructive">Failed to load gold prices. Please try again.</p>
+          <Button onClick={() => refetch()} variant="outline" size="sm">
+            Retry
+          </Button>
         </CardContent>
       </Card>
     );
