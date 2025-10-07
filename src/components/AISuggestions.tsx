@@ -135,9 +135,13 @@ const AISuggestions = () => {
       });
 
       // Call edge function with refreshed session
-      const { error } = await supabase.functions.invoke('generate-investment-suggestions');
+      const { data, error } = await supabase.functions.invoke('generate-investment-suggestions');
+      
+      console.log('Full response:', { data, error });
       
       if (error) {
+        console.error('Error object:', JSON.stringify(error, null, 2));
+        
         // Provide specific error messages based on error type
         if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
           toast({
@@ -148,6 +152,12 @@ const AISuggestions = () => {
           navigate('/auth');
           return;
         }
+        
+        toast({
+          title: "Function Error",
+          description: error.message || JSON.stringify(error),
+          variant: "destructive",
+        });
         throw error;
       }
 
