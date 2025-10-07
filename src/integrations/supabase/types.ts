@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      gold_price_history: {
+        Row: {
+          created_at: string | null
+          gold_type: string
+          id: string
+          price_per_baht: number
+          price_per_gram: number
+          price_type: string
+          recorded_at: string
+        }
+        Insert: {
+          created_at?: string | null
+          gold_type: string
+          id?: string
+          price_per_baht: number
+          price_per_gram: number
+          price_type: string
+          recorded_at: string
+        }
+        Update: {
+          created_at?: string | null
+          gold_type?: string
+          id?: string
+          price_per_baht?: number
+          price_per_gram?: number
+          price_type?: string
+          recorded_at?: string
+        }
+        Relationships: []
+      }
       gold_prices: {
         Row: {
           created_at: string | null
