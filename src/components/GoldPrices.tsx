@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, Coins } from "lucide-react";
+import { TrendingUp, TrendingDown, Coins, RefreshCw } from "lucide-react";
 import GoldPriceChart from "./GoldPriceChart";
 
 interface GoldPrice {
@@ -18,7 +18,7 @@ interface GoldPrice {
 }
 
 export const GoldPrices = () => {
-  const { data: goldPrices, isLoading, error, refetch } = useQuery({
+  const { data: goldPrices, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['gold-prices'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -119,9 +119,21 @@ export const GoldPrices = () => {
             <Coins className="w-5 h-5 text-yellow-500" />
             <CardTitle>Gold Prices (Thailand)</CardTitle>
           </div>
-          <Badge variant="outline" className="text-xs">
-            🔴 Live • Updated: {new Date(goldPrices[0]?.recorded_at).toLocaleTimeString('th-TH')}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              🔴 Live • Updated: {new Date(goldPrices[0]?.recorded_at).toLocaleTimeString('th-TH')}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="h-8 w-8"
+              title="Refresh gold prices"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
