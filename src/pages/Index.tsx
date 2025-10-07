@@ -40,29 +40,36 @@ const Index = () => {
   const handleRefreshAll = async () => {
     setRefreshing(true);
     try {
-      // Refresh stock prices
-      const { error: pricesError } = await supabase.functions.invoke('update-stock-prices');
-      if (pricesError) throw pricesError;
+      // Trigger all update functions in parallel
+      const [stocksResponse, goldResponse, signalsResponse, alertsResponse] = await Promise.all([
+        supabase.functions.invoke('update-stock-prices'),
+        supabase.functions.invoke('update-gold-prices'),
+        supabase.functions.invoke('generate-trading-signals'),
+        supabase.functions.invoke('check-trading-alerts')
+      ]);
 
-      // Refresh gold prices
-      const { error: goldError } = await supabase.functions.invoke('update-gold-prices');
-      if (goldError) throw goldError;
+      // Check for errors
+      const errors = [];
+      if (stocksResponse.error) errors.push('Stock prices update failed');
+      if (goldResponse.error) errors.push('Gold prices update failed');
+      if (signalsResponse.error) errors.push('Trading signals update failed');
+      if (alertsResponse.error) errors.push('Trading alerts check failed');
 
-      // Refresh trading signals
-      const { error: signalsError } = await supabase.functions.invoke('generate-trading-signals');
-      if (signalsError) throw signalsError;
-
-      // Check trading alerts
-      const { error: alertsError } = await supabase.functions.invoke('check-trading-alerts');
-      if (alertsError) throw alertsError;
-
-      toast({
-        title: "สำเร็จ / Success",
-        description: "อัพเดทข้อมูลทั้งหมดเรียบร้อย / All data refreshed successfully",
-      });
-
-      // Reload the page to show updated data
-      setTimeout(() => window.location.reload(), 1000);
+      if (errors.length > 0) {
+        toast({
+          title: "ข้อผิดพลาดบางส่วน / Partial Error",
+          description: errors.join(', '),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "สำเร็จ / Success",
+          description: "อัพเดทข้อมูลทั้งหมดเรียบร้อย / All data refreshed successfully",
+        });
+        
+        // Reload the page to show updated data
+        setTimeout(() => window.location.reload(), 1000);
+      }
     } catch (error) {
       console.error('Refresh error:', error);
       toast({
