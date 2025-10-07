@@ -26,6 +26,18 @@ const AISuggestions = () => {
 
   const handleGenerateSuggestions = async () => {
     try {
+      // Check if user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to generate AI suggestions.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Generating AI Suggestions",
         description: "Please wait while AI analyzes the market...",
@@ -42,9 +54,10 @@ const AISuggestions = () => {
         description: "AI has generated new investment recommendations.",
       });
     } catch (error) {
+      console.error('Error generating suggestions:', error);
       toast({
         title: "Error",
-        description: "Failed to generate suggestions. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate suggestions. Please try again.",
         variant: "destructive",
       });
     }
