@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { positionSchema } from "@/lib/validationSchemas";
 import {
   Dialog,
   DialogContent,
@@ -65,17 +66,30 @@ export const AddPositionDialog = ({ open, onOpenChange }: AddPositionDialogProps
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const stock = stocks?.find(s => s.symbol === selectedStock);
+      // Validate inputs
+      const validationResult = positionSchema.safeParse({
+        stockSymbol: selectedStock,
+        shares,
+        entryPrice,
+        purchaseDate,
+      });
+
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => err.message).join(", ");
+        throw new Error(errors);
+      }
+
+      const stock = stocks?.find(s => s.symbol === validationResult.data.stockSymbol);
       if (!stock) throw new Error("Stock not found");
 
       const { error } = await supabase.from("user_positions").insert({
         user_id: user.id,
         portfolio_id: portfolio?.id,
-        stock_symbol: selectedStock,
+        stock_symbol: validationResult.data.stockSymbol,
         stock_name: stock.name,
-        shares_owned: parseFloat(shares),
-        average_entry_price: parseFloat(entryPrice),
-        purchase_date: purchaseDate,
+        shares_owned: parseFloat(validationResult.data.shares),
+        average_entry_price: parseFloat(validationResult.data.entryPrice),
+        purchase_date: validationResult.data.purchaseDate,
         status: "active",
       });
 

@@ -121,7 +121,7 @@ export type Database = {
           stop_loss: number | null
           suggestion_type: string
           target_audience: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           confidence_score?: number | null
@@ -139,7 +139,7 @@ export type Database = {
           stop_loss?: number | null
           suggestion_type: string
           target_audience?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           confidence_score?: number | null
@@ -157,7 +157,7 @@ export type Database = {
           stop_loss?: number | null
           suggestion_type?: string
           target_audience?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }

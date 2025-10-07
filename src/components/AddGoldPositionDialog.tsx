@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { goldPositionSchema } from "@/lib/validationSchemas";
 
 interface AddGoldPositionDialogProps {
   open: boolean;
@@ -51,13 +52,21 @@ export const AddGoldPositionDialog = ({ open, onOpenChange }: AddGoldPositionDia
         throw new Error('User not authenticated');
       }
 
-      const weight = parseFloat(weightInBaht);
-      const price = parseFloat(purchasePricePerBaht);
+      // Validate inputs
+      const validationResult = goldPositionSchema.safeParse({
+        goldType,
+        weightInBaht,
+        purchasePricePerBaht,
+        notes,
+      });
 
-      if (isNaN(weight) || isNaN(price) || weight <= 0 || price <= 0) {
-        throw new Error('Please enter valid weight and price');
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => err.message).join(", ");
+        throw new Error(errors);
       }
 
+      const weight = parseFloat(validationResult.data.weightInBaht);
+      const price = parseFloat(validationResult.data.purchasePricePerBaht);
       const weightInGrams = weight * 15.244; // 1 baht = 15.244 grams
       const totalCost = weight * price;
 
@@ -66,12 +75,12 @@ export const AddGoldPositionDialog = ({ open, onOpenChange }: AddGoldPositionDia
         .insert({
           user_id: user.id,
           portfolio_id: portfolio.id,
-          gold_type: goldType,
+          gold_type: validationResult.data.goldType,
           weight_in_baht: weight,
           weight_in_grams: weightInGrams,
           purchase_price_per_baht: price,
           total_cost: totalCost,
-          notes: notes || null,
+          notes: validationResult.data.notes || null,
         });
 
       if (error) throw error;

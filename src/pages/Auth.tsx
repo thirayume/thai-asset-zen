@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { TrendingUp } from "lucide-react";
+import { signupSchema, loginSchema } from "@/lib/validationSchemas";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -28,12 +29,24 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      // Validate inputs
+      const validationResult = signupSchema.safeParse({
+        fullName,
         email: signupEmail,
         password: signupPassword,
+      });
+
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => err.message).join(", ");
+        throw new Error(errors);
+      }
+
+      const { error } = await supabase.auth.signUp({
+        email: validationResult.data.email,
+        password: validationResult.data.password,
         options: {
           data: {
-            full_name: fullName,
+            full_name: validationResult.data.fullName,
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -64,9 +77,20 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // Validate inputs
+      const validationResult = loginSchema.safeParse({
         email: loginEmail,
         password: loginPassword,
+      });
+
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => err.message).join(", ");
+        throw new Error(errors);
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: validationResult.data.email,
+        password: validationResult.data.password,
       });
 
       if (error) throw error;

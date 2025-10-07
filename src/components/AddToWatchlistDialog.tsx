@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { watchlistSchema } from "@/lib/validationSchemas";
 import {
   Dialog,
   DialogContent,
@@ -47,15 +48,27 @@ export const AddToWatchlistDialog = ({ open, onOpenChange }: AddToWatchlistDialo
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const stock = stocks?.find(s => s.symbol === selectedStock);
+      // Validate inputs
+      const validationResult = watchlistSchema.safeParse({
+        stockSymbol: selectedStock,
+        targetEntryPrice,
+        notes,
+      });
+
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => err.message).join(", ");
+        throw new Error(errors);
+      }
+
+      const stock = stocks?.find(s => s.symbol === validationResult.data.stockSymbol);
       if (!stock) throw new Error("Stock not found");
 
       const { error } = await supabase.from("user_watchlist").insert({
         user_id: user.id,
-        stock_symbol: selectedStock,
+        stock_symbol: validationResult.data.stockSymbol,
         stock_name: stock.name,
-        target_entry_price: targetEntryPrice ? parseFloat(targetEntryPrice) : null,
-        notes: notes || null,
+        target_entry_price: validationResult.data.targetEntryPrice ? parseFloat(validationResult.data.targetEntryPrice) : null,
+        notes: validationResult.data.notes || null,
       });
 
       if (error) throw error;
