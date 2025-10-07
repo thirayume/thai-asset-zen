@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, TrendingDown, Coins, RefreshCw } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { useState } from "react";
 import GoldPriceChart from "./GoldPriceChart";
 
 interface GoldPrice {
@@ -18,6 +20,8 @@ interface GoldPrice {
 }
 
 export const GoldPrices = () => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const { data: goldPrices, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['gold-prices'],
     queryFn: async () => {
@@ -41,6 +45,31 @@ export const GoldPrices = () => {
     },
     refetchInterval: 60000,
   });
+
+  const handleRefreshGoldPrices = async () => {
+    setIsRefreshing(true);
+    try {
+      const { error } = await supabase.functions.invoke('update-gold-prices');
+      
+      if (error) throw error;
+      
+      await refetch();
+      
+      toast({
+        title: "Success",
+        description: "Gold prices updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating gold prices:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update gold prices",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('th-TH', {
@@ -126,12 +155,12 @@ export const GoldPrices = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => refetch()}
-              disabled={isFetching}
+              onClick={handleRefreshGoldPrices}
+              disabled={isRefreshing || isFetching}
               className="h-8 w-8"
               title="Refresh gold prices"
             >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${isRefreshing || isFetching ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
