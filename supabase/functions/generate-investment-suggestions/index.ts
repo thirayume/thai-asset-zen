@@ -20,17 +20,8 @@ serve(async (req) => {
       throw new Error('Missing required environment variables');
     }
 
-    // Create Supabase client - JWT is automatically validated by gateway when verify_jwt = true
+    // Create Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // Verify user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Fetch current stock data
     const { data: stocks } = await supabase
@@ -123,23 +114,17 @@ Return ONLY a JSON array with this exact structure:
     
     const suggestions = JSON.parse(jsonMatch[0]);
 
-    // Delete old suggestions for this user
+    // Since there's no user auth, we'll store suggestions without user_id filtering
+    // Delete old suggestions (keep last 24 hours)
     await supabase
       .from('investment_suggestions')
       .delete()
-      .eq('user_id', user.id)
       .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-    // Add user_id to each suggestion
-    const userSuggestions = suggestions.map((s: any) => ({
-      ...s,
-      user_id: user.id
-    }));
-
-    // Insert new personalized suggestions
+    // Insert new suggestions without user_id
     const { data: insertedSuggestions, error: insertError } = await supabase
       .from('investment_suggestions')
-      .insert(userSuggestions)
+      .insert(suggestions)
       .select();
 
     if (insertError) {
@@ -148,16 +133,6 @@ Return ONLY a JSON array with this exact structure:
     }
 
     console.log('Inserted suggestions:', insertedSuggestions?.length);
-
-    // Create personalized market alert
-    await supabase
-      .from('market_alerts')
-      .insert({
-        user_id: user.id,
-        alert_type: 'ai_suggestions_updated',
-        message: `${suggestions.length} new AI-powered investment suggestions generated`,
-        severity: 'info'
-      });
 
     return new Response(
       JSON.stringify({
