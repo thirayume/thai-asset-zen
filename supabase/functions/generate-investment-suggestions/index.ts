@@ -14,33 +14,13 @@ serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!LOVABLE_API_KEY || !SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!LOVABLE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Missing required environment variables');
     }
 
-    // Get user from JWT token
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header - user must be authenticated');
-    }
-
-    // Create client with user context to verify authentication
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      console.error('Auth error:', userError);
-      throw new Error('User not authenticated');
-    }
-
-    console.log('Generating suggestions for user:', user.id);
-
-    // Create Supabase client with service role key for data operations
+    // Create Supabase client with service role key to bypass RLS
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Fetch current stock data
@@ -134,25 +114,16 @@ Return ONLY a JSON array with this exact structure:
     
     const suggestions = JSON.parse(jsonMatch[0]);
 
-    // Add user_id to each suggestion
-    const suggestionsWithUserId = suggestions.map((s: any) => ({
-      ...s,
-      user_id: user.id
-    }));
-
-    console.log('Adding user_id to suggestions:', user.id);
-
-    // Delete old suggestions for THIS user only (keep last 24 hours)
+    // Delete old suggestions (keep last 24 hours)
     await supabase
       .from('investment_suggestions')
       .delete()
-      .eq('user_id', user.id)
       .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-    // Insert new suggestions with user_id
+    // Insert new suggestions without user_id (shared across all users)
     const { data: insertedSuggestions, error: insertError } = await supabase
       .from('investment_suggestions')
-      .insert(suggestionsWithUserId)
+      .insert(suggestions)
       .select();
 
     if (insertError) {
