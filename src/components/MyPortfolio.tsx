@@ -7,6 +7,8 @@ import { Plus, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AddPositionDialog } from "./AddPositionDialog";
 import { formatCurrency } from "@/lib/utils";
+import { SkeletonCardList } from "@/components/ui/skeleton-card";
+import { SkeletonStats } from "@/components/ui/skeleton-stats";
 
 interface Position {
   id: string;
@@ -64,7 +66,7 @@ export const MyPortfolio = () => {
     },
   });
 
-  // Delete position mutation
+  // Delete position mutation with optimistic update
   const deleteMutation = useMutation({
     mutationFn: async (positionId: string) => {
       const { error } = await supabase
@@ -74,19 +76,32 @@ export const MyPortfolio = () => {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-positions"] });
-      toast({
-        title: "ลบสำเร็จ / Deleted",
-        description: "ลบตำแหน่งการลงทุนเรียบร้อย / Position deleted successfully",
-      });
+    onMutate: async (positionId) => {
+      await queryClient.cancelQueries({ queryKey: ["user-positions"] });
+      const previousData = queryClient.getQueryData(["user-positions"]);
+      
+      queryClient.setQueryData(["user-positions"], (old: Position[] | undefined) =>
+        old?.filter(pos => pos.id !== positionId) || []
+      );
+      
+      return { previousData };
     },
-    onError: (error: any) => {
+    onError: (error: any, _positionId, context) => {
+      queryClient.setQueryData(["user-positions"], context?.previousData);
       toast({
         title: "ข้อผิดพลาด / Error",
         description: error.message,
         variant: "destructive",
       });
+    },
+    onSuccess: () => {
+      toast({
+        title: "ลบสำเร็จ / Deleted",
+        description: "ลบตำแหน่งการลงทุนเรียบร้อย / Position deleted successfully",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-positions"] });
     },
   });
 
@@ -113,7 +128,19 @@ export const MyPortfolio = () => {
   ) || { totalInvested: 0, currentValue: 0, totalPL: 0 };
 
   if (isLoading) {
-    return <Card><CardContent className="p-6">กำลังโหลด... / Loading...</CardContent></Card>;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>พอร์ตของฉัน / My Portfolio</CardTitle>
+          <div className="mt-4">
+            <SkeletonStats count={3} />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <SkeletonCardList count={3} />
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

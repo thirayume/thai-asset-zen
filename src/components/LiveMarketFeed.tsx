@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Activity, BarChart3 } from "lucide-react";
 import { useEffect, useState } from "react";
 import StockDetails from "./StockDetails";
+import { SkeletonCardList } from "@/components/ui/skeleton-card";
 
 const LiveMarketFeed = () => {
   const [selectedStock, setSelectedStock] = useState<any | null>(null);
   
-  const { data: stocks, refetch } = useQuery({
+  const { data: stocks, refetch, isLoading } = useQuery({
     queryKey: ['thai-stocks'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -51,8 +52,11 @@ const LiveMarketFeed = () => {
         </div>
       </div>
 
-      <div className="space-y-3">
-        {stocks?.map((stock) => (
+      {isLoading ? (
+        <SkeletonCardList count={5} />
+      ) : (
+        <div className="space-y-3">
+          {stocks?.map((stock) => (
           <div 
             key={stock.symbol}
             className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/50 hover:border-primary/30 transition-all cursor-pointer"
@@ -91,8 +95,9 @@ const LiveMarketFeed = () => {
               </Button>
             </div>
           </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       
       {selectedStock && (
         <StockDetails

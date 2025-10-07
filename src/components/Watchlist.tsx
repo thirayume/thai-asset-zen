@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AddToWatchlistDialog } from "./AddToWatchlistDialog";
+import { SkeletonCardList } from "@/components/ui/skeleton-card";
 
 interface WatchlistItem {
   id: string;
@@ -58,7 +59,7 @@ export const Watchlist = () => {
     },
   });
 
-  // Delete watchlist item
+  // Delete watchlist item with optimistic update
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
       const { error } = await supabase
@@ -68,19 +69,32 @@ export const Watchlist = () => {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-watchlist"] });
-      toast({
-        title: "ลบออกจาก Watchlist แล้ว / Removed from Watchlist",
-        description: "ลบหุ้นออกจาก Watchlist เรียบร้อยแล้ว / Stock removed successfully",
-      });
+    onMutate: async (itemId) => {
+      await queryClient.cancelQueries({ queryKey: ["user-watchlist"] });
+      const previousData = queryClient.getQueryData(["user-watchlist"]);
+      
+      queryClient.setQueryData(["user-watchlist"], (old: WatchlistItem[] | undefined) =>
+        old?.filter(item => item.id !== itemId) || []
+      );
+      
+      return { previousData };
     },
-    onError: (error: any) => {
+    onError: (error: any, _itemId, context) => {
+      queryClient.setQueryData(["user-watchlist"], context?.previousData);
       toast({
         title: "ข้อผิดพลาด / Error",
         description: error.message,
         variant: "destructive",
       });
+    },
+    onSuccess: () => {
+      toast({
+        title: "ลบออกจาก Watchlist แล้ว / Removed from Watchlist",
+        description: "ลบหุ้นออกจาก Watchlist เรียบร้อยแล้ว / Stock removed successfully",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-watchlist"] });
     },
   });
 
@@ -95,7 +109,17 @@ export const Watchlist = () => {
   };
 
   if (watchlistLoading) {
-    return <div>Loading watchlist...</div>;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Watchlist / รายการติดตาม</CardTitle>
+          <CardDescription>หุ้นที่คุณสนใจและกำลังติดตาม / Stocks you're tracking</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SkeletonCardList count={3} />
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
