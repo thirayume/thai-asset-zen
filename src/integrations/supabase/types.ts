@@ -44,6 +44,54 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_price_alerts: {
+        Row: {
+          alert_type: string
+          condition_value: number
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          is_triggered: boolean | null
+          notes: string | null
+          notification_sent: boolean | null
+          stock_name: string
+          stock_symbol: string
+          triggered_at: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          condition_value: number
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_triggered?: boolean | null
+          notes?: string | null
+          notification_sent?: boolean | null
+          stock_name: string
+          stock_symbol: string
+          triggered_at?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          condition_value?: number
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_triggered?: boolean | null
+          notes?: string | null
+          notification_sent?: boolean | null
+          stock_name?: string
+          stock_symbol?: string
+          triggered_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       gold_price_history: {
         Row: {
           created_at: string | null
@@ -308,12 +356,14 @@ export type Database = {
           dividend_yield: number | null
           high_price: number | null
           id: string
+          industry: string | null
           last_updated: string | null
           low_price: number | null
           market_cap: number | null
           name: string
           open_price: number | null
           pe_ratio: number | null
+          sector: string | null
           symbol: string
           volume: number | null
         }
@@ -325,12 +375,14 @@ export type Database = {
           dividend_yield?: number | null
           high_price?: number | null
           id?: string
+          industry?: string | null
           last_updated?: string | null
           low_price?: number | null
           market_cap?: number | null
           name: string
           open_price?: number | null
           pe_ratio?: number | null
+          sector?: string | null
           symbol: string
           volume?: number | null
         }
@@ -342,12 +394,14 @@ export type Database = {
           dividend_yield?: number | null
           high_price?: number | null
           id?: string
+          industry?: string | null
           last_updated?: string | null
           low_price?: number | null
           market_cap?: number | null
           name?: string
           open_price?: number | null
           pe_ratio?: number | null
+          sector?: string | null
           symbol?: string
           volume?: number | null
         }
