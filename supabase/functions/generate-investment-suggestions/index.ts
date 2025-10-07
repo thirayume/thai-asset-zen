@@ -20,13 +20,8 @@ serve(async (req) => {
       throw new Error('Missing required environment variables');
     }
 
-    // Create authenticated client - JWT is automatically validated by Supabase gateway
-    const authHeader = req.headers.get('Authorization')!;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: { Authorization: authHeader }
-      }
-    });
+    // Create Supabase client - JWT is automatically validated by gateway when verify_jwt = true
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // Verify user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
