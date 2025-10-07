@@ -26,10 +26,10 @@ const AISuggestions = () => {
 
   const handleGenerateSuggestions = async () => {
     try {
-      // Get the current session with access token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (sessionError || !session) {
+      if (!session) {
         toast({
           title: "Authentication Required",
           description: "Please log in to generate AI suggestions.",
@@ -43,12 +43,8 @@ const AISuggestions = () => {
         description: "Please wait while AI analyzes the market...",
       });
 
-      // Invoke the function with explicit Authorization header
-      const { error } = await supabase.functions.invoke('generate-investment-suggestions', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
+      // The authenticated Supabase client automatically includes the auth token
+      const { error } = await supabase.functions.invoke('generate-investment-suggestions');
       
       if (error) throw error;
 
