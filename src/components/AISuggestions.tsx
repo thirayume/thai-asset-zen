@@ -1,13 +1,38 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, AlertCircle, Sparkles, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { TrendingUp, TrendingDown, AlertCircle, Sparkles, RefreshCw, LogIn, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import type { Session } from "@supabase/supabase-js";
 
 const AISuggestions = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [authSession, setAuthSession] = useState<Session | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Monitor auth state changes
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setAuthSession(session);
+      setIsCheckingAuth(false);
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthSession(session);
+      setIsCheckingAuth(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const { data: suggestions, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['investment-suggestions'],
@@ -27,8 +52,18 @@ const AISuggestions = () => {
   const handleGenerateSuggestions = async () => {
     try {
       // Check if user is authenticated
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        toast({
+          title: "Session Error",
+          description: "Unable to verify authentication. Please try logging in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!session) {
         toast({
           title: "Authentication Required",
@@ -38,15 +73,83 @@ const AISuggestions = () => {
         return;
       }
 
+      // Check if session has valid access token
+      if (!session.access_token) {
+        toast({
+          title: "Invalid Session",
+          description: "Your session is invalid. Please log in again.",
+          variant: "destructive",
+        });
+        navigate('/auth');
+        return;
+      }
+
+      // Check if session is expired
+      const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+      if (expiresAt && expiresAt < Date.now()) {
+        toast({
+          title: "Session Expired",
+          description: "Your session has expired. Refreshing...",
+        });
+        
+        // Attempt to refresh session
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session) {
+          toast({
+            title: "Session Refresh Failed",
+            description: "Please log in again.",
+            variant: "destructive",
+          });
+          navigate('/auth');
+          return;
+        }
+      }
+
+      // Force refresh session to ensure we have the latest valid token
+      const { data: refreshedSession, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        console.error('Session refresh error:', refreshError);
+        toast({
+          title: "Authentication Error",
+          description: "Failed to refresh session. Please log in again.",
+          variant: "destructive",
+        });
+        navigate('/auth');
+        return;
+      }
+
+      if (!refreshedSession.session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to continue.",
+          variant: "destructive",
+        });
+        navigate('/auth');
+        return;
+      }
+
       toast({
         title: "Generating AI Suggestions",
         description: "Please wait while AI analyzes the market...",
       });
 
-      // The authenticated Supabase client automatically includes the auth token
+      // Call edge function with refreshed session
       const { error } = await supabase.functions.invoke('generate-investment-suggestions');
       
-      if (error) throw error;
+      if (error) {
+        // Provide specific error messages based on error type
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          toast({
+            title: "Authentication Failed",
+            description: "Your session is no longer valid. Please log in again.",
+            variant: "destructive",
+          });
+          navigate('/auth');
+          return;
+        }
+        throw error;
+      }
 
       await refetch();
       
@@ -56,9 +159,20 @@ const AISuggestions = () => {
       });
     } catch (error) {
       console.error('Error generating suggestions:', error);
+      
+      // Differentiate error types
+      let errorMessage = "Failed to generate suggestions. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          errorMessage = "Network connection error. Please check your internet connection.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate suggestions. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -95,16 +209,52 @@ const AISuggestions = () => {
             <p className="text-sm text-muted-foreground">Powered by Gemini AI - For Newbie Investors</p>
           </div>
         </div>
-        <Button 
-          onClick={handleGenerateSuggestions} 
-          disabled={isRefetching}
-          size="sm"
-          className="gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-3">
+          {!isCheckingAuth && (
+            <Badge 
+              variant="outline" 
+              className={authSession ? "border-profit/50 text-profit" : "border-warning/50 text-warning"}
+            >
+              {authSession ? (
+                <>
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Logged In
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  Not Logged In
+                </>
+              )}
+            </Badge>
+          )}
+          <Button 
+            onClick={handleGenerateSuggestions} 
+            disabled={isRefetching || !authSession}
+            size="sm"
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
+
+      {!authSession && !isCheckingAuth && (
+        <Alert className="mb-6 border-warning/50 bg-warning/10">
+          <LogIn className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-sm">
+            <strong>Login Required:</strong> You need to be logged in to generate AI investment suggestions.
+            <Button 
+              onClick={() => navigate('/auth')} 
+              variant="link" 
+              className="ml-2 p-0 h-auto text-warning hover:text-warning/80"
+            >
+              Go to Login →
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {isLoading ? (
         <div className="space-y-4">
