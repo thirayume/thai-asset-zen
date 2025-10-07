@@ -12,15 +12,38 @@ serve(async (req) => {
   }
 
   try {
+    // Get authenticated user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
-    if (!LOVABLE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!LOVABLE_API_KEY || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error('Missing required environment variables');
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // Create client with user's auth token to verify identity
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: { Authorization: authHeader }
+      }
+    });
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Fetch current stock data
     const { data: stocks } = await supabase
@@ -113,16 +136,23 @@ Return ONLY a JSON array with this exact structure:
     
     const suggestions = JSON.parse(jsonMatch[0]);
 
-    // Delete old suggestions
+    // Delete old suggestions for this user
     await supabase
       .from('investment_suggestions')
       .delete()
+      .eq('user_id', user.id)
       .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-    // Insert new suggestions
+    // Add user_id to each suggestion
+    const userSuggestions = suggestions.map((s: any) => ({
+      ...s,
+      user_id: user.id
+    }));
+
+    // Insert new personalized suggestions
     const { data: insertedSuggestions, error: insertError } = await supabase
       .from('investment_suggestions')
-      .insert(suggestions)
+      .insert(userSuggestions)
       .select();
 
     if (insertError) {
@@ -132,10 +162,11 @@ Return ONLY a JSON array with this exact structure:
 
     console.log('Inserted suggestions:', insertedSuggestions?.length);
 
-    // Create market alert
+    // Create personalized market alert
     await supabase
       .from('market_alerts')
       .insert({
+        user_id: user.id,
         alert_type: 'ai_suggestions_updated',
         message: `${suggestions.length} new AI-powered investment suggestions generated`,
         severity: 'info'
