@@ -1,9 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { checkRateLimit, getRateLimitHeaders, extractUserId } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Rate limit: 10 calls per hour (admin only function)
+const RATE_LIMIT = {
+  maxRequests: 10,
+  windowMs: 60 * 60 * 1000,
 };
 
 serve(async (req) => {
@@ -12,6 +19,25 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting check
+    const userId = extractUserId(req.headers.get('authorization'));
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const rateLimitResult = checkRateLimit(userId, RATE_LIMIT);
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({ error: rateLimitResult.message }),
+        { 
+          status: 429,
+          headers: { ...corsHeaders, ...getRateLimitHeaders(rateLimitResult), 'Content-Type': 'application/json' }
+        }
+      );
+    }
     console.log('Starting trading signals generation...');
     
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');

@@ -1,9 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { checkRateLimit, getRateLimitHeaders, extractUserId, getClientIP } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Rate limit: 5 calls per hour per user/IP
+const RATE_LIMIT = {
+  maxRequests: 5,
+  windowMs: 60 * 60 * 1000, // 1 hour
 };
 
 serve(async (req) => {
@@ -12,6 +19,30 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting check
+    const userId = extractUserId(req.headers.get('authorization'));
+    const clientIP = getClientIP(req);
+    const identifier = userId || `ip:${clientIP}`;
+    
+    const rateLimitResult = checkRateLimit(identifier, RATE_LIMIT);
+    
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for ${identifier}`);
+      return new Response(
+        JSON.stringify({ 
+          error: rateLimitResult.message,
+          type: 'rate_limit_exceeded'
+        }),
+        { 
+          status: 429,
+          headers: { 
+            ...corsHeaders, 
+            ...getRateLimitHeaders(rateLimitResult),
+            'Content-Type': 'application/json' 
+          }
+        }
+      );
+    }
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -139,7 +170,11 @@ Return ONLY a JSON array with this exact structure:
         suggestions: insertedSuggestions,
         count: insertedSuggestions?.length || 0
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { 
+        ...corsHeaders, 
+        ...getRateLimitHeaders(rateLimitResult),
+        'Content-Type': 'application/json' 
+      } }
     );
 
   } catch (error) {
