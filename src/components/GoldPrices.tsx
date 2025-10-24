@@ -9,6 +9,7 @@ import { TrendingUp, TrendingDown, Coins, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import GoldPriceChart from "./GoldPriceChart";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 interface GoldPrice {
   id: string;
@@ -110,10 +111,17 @@ export const GoldPrices = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-destructive">Failed to load gold prices. Please try again.</p>
-          <Button onClick={() => refetch()} variant="outline" size="sm">
-            Retry
-          </Button>
+          <p className="text-destructive">Failed to load gold prices. Please check your connection and try again.</p>
+          <div className="flex gap-2">
+            <Button onClick={() => refetch()} variant="outline" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+            <Button onClick={handleRefreshGoldPrices} variant="outline" size="sm" disabled={isRefreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Force Update
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -141,7 +149,8 @@ export const GoldPrices = () => {
   const barSell = goldPrices.find(p => p.gold_type === '99.99%' && p.price_type === 'sell');
 
   return (
-    <Card className="w-full">
+    <ErrorBoundary fallbackTitle="Gold Prices Error">
+      <Card className="w-full">
       <CardHeader>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
@@ -305,5 +314,6 @@ export const GoldPrices = () => {
         </Tabs>
       </CardContent>
     </Card>
+    </ErrorBoundary>
   );
 };

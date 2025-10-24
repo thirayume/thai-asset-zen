@@ -16,7 +16,8 @@ import {
   ComposedChart,
 } from "recharts";
 import { getDateRange, formatTimePeriod, calculateSMA } from "@/lib/chartUtils";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 interface GoldPriceChartProps {
   goldType: string;
@@ -40,76 +41,81 @@ const GoldPriceChart = ({
   const [showMA20, setShowMA20] = useState(true);
 
   useEffect(() => {
-    const fetchHistoricalData = async () => {
-      setLoading(true);
-      setError(null);
-      
-      const { startDate } = getDateRange(selectedPeriod);
-      
-      const { data, error: fetchError } = await supabase
-        .from("gold_price_history")
-        .select("*")
-        .eq("gold_type", goldType)
-        .gte("recorded_at", startDate.toISOString())
-        .order("recorded_at", { ascending: true });
-
-      if (fetchError) {
-        console.error("Error fetching historical gold data:", fetchError);
-        setError("Failed to load historical data");
-        setLoading(false);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        // Group by timestamp and price type
-        const groupedData: { [key: string]: any } = {};
-        
-        data.forEach((item) => {
-          const dateKey = new Date(item.recorded_at).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: selectedPeriod === "1D" ? "2-digit" : undefined,
-            minute: selectedPeriod === "1D" ? "2-digit" : undefined,
-          });
-          
-          if (!groupedData[dateKey]) {
-            groupedData[dateKey] = { date: dateKey };
-          }
-          
-          if (item.price_type === 'buy') {
-            groupedData[dateKey].buy = Number(item.price_per_baht);
-          } else if (item.price_type === 'sell') {
-            groupedData[dateKey].sell = Number(item.price_per_baht);
-          }
-        });
-
-        const formattedData = Object.values(groupedData).map(item => ({
-          ...item,
-          close: item.buy || item.sell || 0, // For MA calculation
-        }));
-
-        // Calculate moving average for buy prices
-        const ma20 = calculateSMA(formattedData, 20);
-
-        const enrichedData = formattedData.map((item, index) => ({
-          ...item,
-          ma20: ma20[index],
-        }));
-
-        setChartData(enrichedData);
-      } else {
-        setChartData([]);
-      }
-      
-      setLoading(false);
-    };
-
     fetchHistoricalData();
   }, [goldType, selectedPeriod]);
 
   const periods: TimePeriod[] = ["1D", "1W", "1M", "3M", "1Y"];
 
   const goldTypeLabel = goldType === "96.5%" ? "Gold Ornament (96.5%)" : "Gold Bar (99.99%)";
+
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    // Trigger re-fetch by changing a dependency
+    fetchHistoricalData();
+  };
+
+  const fetchHistoricalData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    const { startDate } = getDateRange(selectedPeriod);
+    
+    const { data, error: fetchError } = await supabase
+      .from("gold_price_history")
+      .select("*")
+      .eq("gold_type", goldType)
+      .gte("recorded_at", startDate.toISOString())
+      .order("recorded_at", { ascending: true });
+
+    if (fetchError) {
+      console.error("Error fetching historical gold data:", fetchError);
+      setError("Failed to load historical data");
+      setLoading(false);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      const groupedData: { [key: string]: any } = {};
+      
+      data.forEach((item) => {
+        const dateKey = new Date(item.recorded_at).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: selectedPeriod === "1D" ? "2-digit" : undefined,
+          minute: selectedPeriod === "1D" ? "2-digit" : undefined,
+        });
+        
+        if (!groupedData[dateKey]) {
+          groupedData[dateKey] = { date: dateKey };
+        }
+        
+        if (item.price_type === 'buy') {
+          groupedData[dateKey].buy = Number(item.price_per_baht);
+        } else if (item.price_type === 'sell') {
+          groupedData[dateKey].sell = Number(item.price_per_baht);
+        }
+      });
+
+      const formattedData = Object.values(groupedData).map(item => ({
+        ...item,
+        close: item.buy || item.sell || 0,
+      }));
+
+      const ma20 = calculateSMA(formattedData, 20);
+
+      const enrichedData = formattedData.map((item, index) => ({
+        ...item,
+        ma20: ma20[index],
+      }));
+
+      setChartData(enrichedData);
+    } else {
+      setChartData([]);
+    }
+    
+    setLoading(false);
+  };
 
   if (loading) {
     return (
@@ -125,7 +131,8 @@ const GoldPriceChart = ({
   }
 
   return (
-    <Card>
+    <ErrorBoundary fallbackTitle="Gold Chart Error">
+      <Card>
       <CardHeader>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -174,7 +181,8 @@ const GoldPriceChart = ({
         {error ? (
           <div className="h-96 flex flex-col items-center justify-center gap-4">
             <p className="text-destructive">{error}</p>
-            <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+            <Button onClick={handleRetry} variant="outline" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" />
               Retry
             </Button>
           </div>
@@ -251,6 +259,7 @@ const GoldPriceChart = ({
         )}
       </CardContent>
     </Card>
+    </ErrorBoundary>
   );
 };
 

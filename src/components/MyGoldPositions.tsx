@@ -7,6 +7,7 @@ import { Coins, Plus, TrendingUp, TrendingDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { AddGoldPositionDialog } from "./AddGoldPositionDialog";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 interface GoldPosition {
   id: string;
@@ -105,7 +106,7 @@ export const MyGoldPositions = () => {
   }
 
   return (
-    <>
+    <ErrorBoundary fallbackTitle="Gold Positions Error">
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -219,6 +220,6 @@ export const MyGoldPositions = () => {
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
       />
-    </>
+    </ErrorBoundary>
   );
 };

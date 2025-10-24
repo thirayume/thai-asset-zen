@@ -6,52 +6,67 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Fetch gold prices from Thai gold traders API - using actual live prices
+// Fetch gold prices with exponential backoff retry
 const fetchGoldPrices = async () => {
   console.log('Fetching gold prices from Gold Traders Association...');
   
-  try {
-    // The real API endpoint appears to be embedded in their JavaScript
-    // We'll try multiple potential endpoints and use realistic prices based on current market
-    const endpoints = [
-      'https://www.goldtraders.or.th/api/goldtraders/price',
-      'https://www.goldtraders.or.th/api/price',
-    ];
-    
-    for (const endpoint of endpoints) {
+  const endpoints = [
+    'https://www.goldtraders.or.th/api/goldtraders/price',
+    'https://www.goldtraders.or.th/api/price',
+  ];
+
+  const maxRetries = 3;
+  let failureCount = 0;
+
+  for (const endpoint of endpoints) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        console.log(`Trying endpoint: ${endpoint} (Attempt ${attempt}/${maxRetries})`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
         const response = await fetch(endpoint, {
           headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0'
-          }
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'th-TH,th;q=0.9,en;q=0.8',
+            'Cache-Control': 'no-cache',
+          },
+          signal: controller.signal,
         });
         
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Gold API response from', endpoint, ':', data);
-          
-          // Try to parse various possible response formats
-          const prices = parseGoldAPIResponse(data);
-          if (prices.length > 0) {
-            console.log('Successfully parsed', prices.length, 'price records');
-            return prices;
-          }
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-      } catch (err) {
-        console.log('Endpoint', endpoint, 'failed:', err instanceof Error ? err.message : String(err));
-        continue;
+        
+        const data = await response.json();
+        const prices = parseGoldAPIResponse(data);
+        
+        if (prices.length > 0) {
+          console.log(`✅ Successfully fetched ${prices.length} prices from ${endpoint}`);
+          return prices;
+        }
+      } catch (error) {
+        failureCount++;
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`Endpoint ${endpoint} attempt ${attempt} failed:`, errorMsg);
+        
+        // Exponential backoff: wait before retry
+        if (attempt < maxRetries) {
+          const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+          console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
       }
     }
-    
-    // If all API endpoints fail, use realistic current market prices
-    console.warn('All API endpoints failed, using current market-based prices');
-    return generateRealisticGoldPrices();
-    
-  } catch (error) {
-    console.error('Error fetching gold prices:', error);
-    return generateRealisticGoldPrices();
   }
+
+  // All endpoints failed after retries
+  console.warn(`⚠️ All API endpoints failed after ${failureCount} attempts, using fallback prices`);
+  return generateRealisticGoldPrices();
 };
 
 // Parse various possible API response formats
@@ -195,6 +210,11 @@ serve(async (req) => {
     // Fetch gold prices
     const goldPrices = await fetchGoldPrices();
     
+    // Detect if using fallback prices
+    const usingFallback = !goldPrices.some(p => 
+      p.price_type === 'buy' && p.gold_type === '96.5%' && p.price_per_baht > 40000
+    );
+    
     console.log('Upserting', goldPrices.length, 'price records into database...');
     
     // Upsert into current gold_prices table (replaces old prices with new ones)
@@ -222,13 +242,19 @@ serve(async (req) => {
       // Don't throw - historical data is less critical
     }
 
-    console.log('Successfully updated', insertedPrices?.length, 'current gold prices');
-    console.log('Successfully saved', historyPrices?.length || 0, 'historical price records');
+    console.log('✅ Successfully updated', insertedPrices?.length, 'current gold prices');
+    console.log('✅ Successfully saved', historyPrices?.length || 0, 'historical price records');
+
+    // Log warning if using fallback for monitoring
+    if (usingFallback) {
+      console.warn('⚠️ API fallback in use - gold prices are simulated');
+    }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         updated: insertedPrices?.length || 0,
+        usingFallback,
         timestamp: new Date().toISOString()
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
