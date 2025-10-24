@@ -9,6 +9,7 @@ import AdminUserManagement from "@/components/admin/AdminUserManagement";
 import AdminSystemSettings from "@/components/admin/AdminSystemSettings";
 import AdminAnalytics from "@/components/admin/AdminAnalytics";
 import AdminStockManager from "@/components/admin/AdminStockManager";
+import AdminMonitoring from "@/components/admin/AdminMonitoring";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -94,8 +95,9 @@ const Admin = () => {
 
         {/* Admin Tabs */}
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
             <TabsTrigger value="settings">System Settings</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="stocks">Stock Management</TabsTrigger>
@@ -103,6 +105,10 @@ const Admin = () => {
 
           <TabsContent value="users" className="space-y-4">
             <AdminUserManagement />
+          </TabsContent>
+
+          <TabsContent value="monitoring" className="space-y-4">
+            <AdminMonitoring />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4">
