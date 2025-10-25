@@ -2,16 +2,21 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut, User, Shield, RefreshCw } from "lucide-react";
-import AISuggestions from "@/components/AISuggestions";
-import LiveMarketFeed from "@/components/LiveMarketFeed";
-import { MyPortfolio } from "@/components/MyPortfolio";
-import { TradingAlerts } from "@/components/TradingAlerts";
-import { Watchlist } from "@/components/Watchlist";
-import TradingSignals from "@/components/TradingSignals";
-import { GoldPrices } from "@/components/GoldPrices";
-import { MyGoldPositions } from "@/components/MyGoldPositions";
 import { useToast } from "@/hooks/use-toast";
+import { MyPortfolio } from "@/components/MyPortfolio";
+import { MyGoldPositions } from "@/components/MyGoldPositions";
+import { Watchlist } from "@/components/Watchlist";
+import { GoldPrices } from "@/components/GoldPrices";
+import AISuggestions from "@/components/AISuggestions";
+import TradingSignals from "@/components/TradingSignals";
+import { TradingAlerts } from "@/components/TradingAlerts";
+import LiveMarketFeed from "@/components/LiveMarketFeed";
+import { PriceAlerts } from "@/components/PriceAlerts";
+import { PortfolioAnalytics } from "@/components/PortfolioAnalytics";
+import { TransactionHistory } from "@/components/TransactionHistory";
+import { TaxReport } from "@/components/TaxReport";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -40,7 +45,6 @@ const Index = () => {
   const handleRefreshAll = async () => {
     setRefreshing(true);
     try {
-      // Trigger all update functions in parallel
       const [stocksResponse, goldResponse, signalsResponse, alertsResponse] = await Promise.all([
         supabase.functions.invoke('update-stock-prices'),
         supabase.functions.invoke('update-gold-prices'),
@@ -48,7 +52,6 @@ const Index = () => {
         supabase.functions.invoke('check-trading-alerts')
       ]);
 
-      // Check for errors
       const errors = [];
       if (stocksResponse.error) errors.push('Stock prices update failed');
       if (goldResponse.error) errors.push('Gold prices update failed');
@@ -66,8 +69,6 @@ const Index = () => {
           title: "สำเร็จ / Success",
           description: "อัพเดทข้อมูลทั้งหมดเรียบร้อย / All data refreshed successfully",
         });
-        
-        // Reload the page to show updated data
         setTimeout(() => window.location.reload(), 1000);
       }
     } catch (error) {
@@ -138,37 +139,63 @@ const Index = () => {
           </div>
         </div>
 
-        {/* AI Suggestions and Trading Signals */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <AISuggestions />
-          <TradingSignals />
-        </div>
+        {/* Main Tabs */}
+        <Tabs defaultValue="portfolio" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9">
+            <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
+            <TabsTrigger value="gold">Gold</TabsTrigger>
+            <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
+            <TabsTrigger value="ai">AI Insights</TabsTrigger>
+            <TabsTrigger value="market">Market</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="tax">Tax Report</TabsTrigger>
+          </TabsList>
 
-        {/* Market Feed */}
-        <div className="mb-6">
-          <LiveMarketFeed />
-        </div>
+          <TabsContent value="portfolio" className="space-y-6">
+            <MyPortfolio />
+          </TabsContent>
 
-        {/* Trading Alerts */}
-        <div className="mb-6">
-          <TradingAlerts />
-        </div>
+          <TabsContent value="gold" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <GoldPrices />
+              <MyGoldPositions />
+            </div>
+          </TabsContent>
 
-        {/* Watchlist */}
-        <div className="mb-6">
-          <Watchlist />
-        </div>
+          <TabsContent value="watchlist" className="space-y-6">
+            <Watchlist />
+          </TabsContent>
 
-        {/* Gold Prices and Positions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <GoldPrices />
-          <MyGoldPositions />
-        </div>
+          <TabsContent value="ai" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <AISuggestions />
+              <TradingSignals />
+            </div>
+            <TradingAlerts />
+          </TabsContent>
 
-        {/* My Portfolio */}
-        <div className="mb-6">
-          <MyPortfolio />
-        </div>
+          <TabsContent value="market" className="space-y-6">
+            <LiveMarketFeed />
+          </TabsContent>
+
+          <TabsContent value="alerts" className="space-y-6">
+            <PriceAlerts />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <PortfolioAnalytics />
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-6">
+            <TransactionHistory />
+          </TabsContent>
+
+          <TabsContent value="tax" className="space-y-6">
+            <TaxReport />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
