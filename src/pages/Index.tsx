@@ -17,6 +17,9 @@ import { PriceAlerts } from "@/components/PriceAlerts";
 import { PortfolioAnalytics } from "@/components/PortfolioAnalytics";
 import { TransactionHistory } from "@/components/TransactionHistory";
 import { TaxReport } from "@/components/TaxReport";
+import { PullToRefresh } from "@/components/PullToRefresh";
+import { SharePortfolio } from "@/components/SharePortfolio";
+import { Leaderboard } from "@/components/Leaderboard";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -83,6 +86,10 @@ const Index = () => {
     }
   };
 
+  const handlePullToRefresh = async () => {
+    await handleRefreshAll();
+  };
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -102,6 +109,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
+      <PullToRefresh onRefresh={handlePullToRefresh} />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8 flex items-start justify-between">
@@ -141,7 +149,7 @@ const Index = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="portfolio" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10">
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="gold">Gold</TabsTrigger>
             <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
@@ -151,6 +159,7 @@ const Index = () => {
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="tax">Tax Report</TabsTrigger>
+            <TabsTrigger value="social">Social</TabsTrigger>
           </TabsList>
 
           <TabsContent value="portfolio" className="space-y-6">
@@ -194,6 +203,13 @@ const Index = () => {
 
           <TabsContent value="tax" className="space-y-6">
             <TaxReport />
+          </TabsContent>
+
+          <TabsContent value="social" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <SharePortfolio />
+              <Leaderboard />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
