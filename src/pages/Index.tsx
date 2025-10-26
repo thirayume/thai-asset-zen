@@ -21,6 +21,7 @@ import { PullToRefresh } from "@/components/PullToRefresh";
 import { SharePortfolio } from "@/components/SharePortfolio";
 import { Leaderboard } from "@/components/Leaderboard";
 import TradingBotSettings from "@/components/TradingBotSettings";
+import TradingBotDashboard from "@/components/TradingBotDashboard";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -215,6 +216,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="bot" className="space-y-6">
+            <TradingBotDashboard />
             <TradingBotSettings />
           </TabsContent>
         </Tabs>
