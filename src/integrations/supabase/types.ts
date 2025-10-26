@@ -44,6 +44,80 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_trade_executions: {
+        Row: {
+          action: Database["public"]["Enums"]["trade_action"]
+          broker_order_id: string | null
+          confidence_score: number | null
+          created_at: string | null
+          executed_at: string | null
+          execution_price: number | null
+          failure_reason: string | null
+          id: string
+          price: number
+          retry_count: number | null
+          shares: number
+          signal_id: string | null
+          status: Database["public"]["Enums"]["execution_status"] | null
+          stock_name: string
+          stock_symbol: string
+          stop_loss: number | null
+          take_profit: number | null
+          total_value: number
+          user_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["trade_action"]
+          broker_order_id?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          executed_at?: string | null
+          execution_price?: number | null
+          failure_reason?: string | null
+          id?: string
+          price: number
+          retry_count?: number | null
+          shares: number
+          signal_id?: string | null
+          status?: Database["public"]["Enums"]["execution_status"] | null
+          stock_name: string
+          stock_symbol: string
+          stop_loss?: number | null
+          take_profit?: number | null
+          total_value: number
+          user_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["trade_action"]
+          broker_order_id?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          executed_at?: string | null
+          execution_price?: number | null
+          failure_reason?: string | null
+          id?: string
+          price?: number
+          retry_count?: number | null
+          shares?: number
+          signal_id?: string | null
+          status?: Database["public"]["Enums"]["execution_status"] | null
+          stock_name?: string
+          stock_symbol?: string
+          stop_loss?: number | null
+          take_profit?: number | null
+          total_value?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_trade_executions_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "trading_signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_price_alerts: {
         Row: {
           alert_type: string
@@ -241,6 +315,65 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      monitored_positions: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          current_price: number | null
+          entry_price: number
+          exit_reason: string | null
+          exited_at: string | null
+          highest_price_seen: number | null
+          id: string
+          last_checked_at: string | null
+          position_id: string | null
+          stop_loss_price: number | null
+          take_profit_price: number | null
+          trailing_stop_enabled: boolean | null
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          current_price?: number | null
+          entry_price: number
+          exit_reason?: string | null
+          exited_at?: string | null
+          highest_price_seen?: number | null
+          id?: string
+          last_checked_at?: string | null
+          position_id?: string | null
+          stop_loss_price?: number | null
+          take_profit_price?: number | null
+          trailing_stop_enabled?: boolean | null
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          current_price?: number | null
+          entry_price?: number
+          exit_reason?: string | null
+          exited_at?: string | null
+          highest_price_seen?: number | null
+          id?: string
+          last_checked_at?: string | null
+          position_id?: string | null
+          stop_loss_price?: number | null
+          take_profit_price?: number | null
+          trailing_stop_enabled?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monitored_positions_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "user_positions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -449,6 +582,72 @@ export type Database = {
           trigger_price?: number | null
           user_id?: string
           watchlist_id?: string | null
+        }
+        Relationships: []
+      }
+      trading_bot_config: {
+        Row: {
+          allowed_signal_types: string[] | null
+          auto_stop_loss: boolean | null
+          auto_take_profit: boolean | null
+          broker_account_id: string | null
+          broker_api_key: string | null
+          broker_name: string | null
+          created_at: string | null
+          daily_loss_limit: number | null
+          enabled: boolean | null
+          id: string
+          max_daily_trades: number | null
+          max_portfolio_drawdown: number | null
+          max_position_size: number | null
+          max_total_exposure: number | null
+          min_confidence_score: number | null
+          mode: Database["public"]["Enums"]["trading_mode"] | null
+          trailing_stop_percent: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          allowed_signal_types?: string[] | null
+          auto_stop_loss?: boolean | null
+          auto_take_profit?: boolean | null
+          broker_account_id?: string | null
+          broker_api_key?: string | null
+          broker_name?: string | null
+          created_at?: string | null
+          daily_loss_limit?: number | null
+          enabled?: boolean | null
+          id?: string
+          max_daily_trades?: number | null
+          max_portfolio_drawdown?: number | null
+          max_position_size?: number | null
+          max_total_exposure?: number | null
+          min_confidence_score?: number | null
+          mode?: Database["public"]["Enums"]["trading_mode"] | null
+          trailing_stop_percent?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          allowed_signal_types?: string[] | null
+          auto_stop_loss?: boolean | null
+          auto_take_profit?: boolean | null
+          broker_account_id?: string | null
+          broker_api_key?: string | null
+          broker_name?: string | null
+          created_at?: string | null
+          daily_loss_limit?: number | null
+          enabled?: boolean | null
+          id?: string
+          max_daily_trades?: number | null
+          max_portfolio_drawdown?: number | null
+          max_position_size?: number | null
+          max_total_exposure?: number | null
+          min_confidence_score?: number | null
+          mode?: Database["public"]["Enums"]["trading_mode"] | null
+          trailing_stop_percent?: number | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -695,10 +894,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      cleanup_expired_suggestions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_suggestions: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -707,7 +903,7 @@ export type Database = {
         Returns: boolean
       }
       list_cron_jobs: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active: boolean
           command: string
@@ -723,6 +919,9 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "member"
+      execution_status: "pending" | "executed" | "failed" | "cancelled"
+      trade_action: "BUY" | "SELL"
+      trading_mode: "paper" | "live"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -851,6 +1050,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "member"],
+      execution_status: ["pending", "executed", "failed", "cancelled"],
+      trade_action: ["BUY", "SELL"],
+      trading_mode: ["paper", "live"],
     },
   },
 } as const

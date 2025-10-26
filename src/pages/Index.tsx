@@ -20,6 +20,7 @@ import { TaxReport } from "@/components/TaxReport";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { SharePortfolio } from "@/components/SharePortfolio";
 import { Leaderboard } from "@/components/Leaderboard";
+import TradingBotSettings from "@/components/TradingBotSettings";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -149,7 +150,7 @@ const Index = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="portfolio" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-11">
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="gold">Gold</TabsTrigger>
             <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
@@ -160,6 +161,7 @@ const Index = () => {
             <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="tax">Tax Report</TabsTrigger>
             <TabsTrigger value="social">Social</TabsTrigger>
+            <TabsTrigger value="bot">Bot</TabsTrigger>
           </TabsList>
 
           <TabsContent value="portfolio" className="space-y-6">
@@ -210,6 +212,10 @@ const Index = () => {
               <SharePortfolio />
               <Leaderboard />
             </div>
+          </TabsContent>
+
+          <TabsContent value="bot" className="space-y-6">
+            <TradingBotSettings />
           </TabsContent>
         </Tabs>
       </div>
