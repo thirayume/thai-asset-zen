@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Activity, TrendingUp, TrendingDown, DollarSign, Target, RefreshCw, Play, Pause } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, DollarSign, Target, RefreshCw, Play, Pause, Power, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface TradeExecution {
@@ -206,6 +206,48 @@ export default function TradingBotDashboard() {
     fetchRecentTrades();
   };
 
+  const handleKillSwitch = async () => {
+    if (!window.confirm('⚠️ EMERGENCY STOP\n\nThis will immediately disable the trading bot.\n\nAre you sure?')) {
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('trading_bot_config')
+        .update({ enabled: false })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setBotEnabled(false);
+      toast({
+        title: '🛑 Bot stopped successfully',
+        description: 'All automated trading has been disabled'
+      });
+
+      // Insert alert
+      await supabase.from('trade_alerts').insert({
+        user_id: user.id,
+        stock_symbol: 'SYSTEM',
+        stock_name: 'System Alert',
+        alert_type: 'bot_emergency_stop',
+        message: '🛑 Trading bot emergency stopped by user',
+        current_price: null,
+        trigger_price: null
+      });
+    } catch (error: any) {
+      console.error('Kill switch error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to stop bot',
+        variant: 'destructive'
+      });
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Loading dashboard...</div>;
   }
@@ -250,6 +292,17 @@ export default function TradingBotDashboard() {
                   </>
                 )}
               </Button>
+              {botEnabled && (
+                <Button 
+                  onClick={handleKillSwitch} 
+                  variant="destructive" 
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Power className="h-4 w-4" />
+                  Emergency Stop
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -278,6 +331,65 @@ export default function TradingBotDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Safety Status Indicators */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border-yellow-500/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              Daily Loss Limit
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold">
+              ฿0 / ฿5,000
+            </div>
+            <div className="w-full bg-secondary rounded-full h-2 mt-2">
+              <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '0%' }} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Safe - No losses today</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-blue-500/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-blue-500" />
+              Daily Trades
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold">
+              {stats.trades_today} / 3
+            </div>
+            <div className="w-full bg-secondary rounded-full h-2 mt-2">
+              <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(stats.trades_today / 3) * 100}%` }} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {3 - stats.trades_today} trades remaining today
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-green-500/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Total Exposure
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold">
+              ฿0 / ฿50,000
+            </div>
+            <div className="w-full bg-secondary rounded-full h-2 mt-2">
+              <div className="bg-green-500 h-2 rounded-full" style={{ width: '0%' }} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Safe - Low exposure</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

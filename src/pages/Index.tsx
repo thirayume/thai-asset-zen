@@ -22,6 +22,8 @@ import { SharePortfolio } from "@/components/SharePortfolio";
 import { Leaderboard } from "@/components/Leaderboard";
 import TradingBotSettings from "@/components/TradingBotSettings";
 import TradingBotDashboard from "@/components/TradingBotDashboard";
+import { BotTradeHistory } from "@/components/BotTradeHistory";
+import { BotAlerts } from "@/components/BotAlerts";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -215,9 +217,31 @@ const Index = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="bot" className="space-y-6">
-            <TradingBotDashboard />
-            <TradingBotSettings />
+          <TabsContent value="bot" className="space-y-4">
+            <Tabs defaultValue="dashboard" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="trades">Trades</TabsTrigger>
+                <TabsTrigger value="alerts">Alerts</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="dashboard" className="space-y-4 mt-4">
+                <TradingBotDashboard />
+              </TabsContent>
+              
+              <TabsContent value="settings" className="space-y-4 mt-4">
+                <TradingBotSettings />
+              </TabsContent>
+              
+              <TabsContent value="trades" className="space-y-4 mt-4">
+                <BotTradeHistory />
+              </TabsContent>
+              
+              <TabsContent value="alerts" className="space-y-4 mt-4">
+                <BotAlerts />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </div>

@@ -426,14 +426,14 @@ export default function TradingBotSettings() {
           <div className="space-y-2">
             <Label htmlFor="broker-name">Broker</Label>
             <Select
-              value={config.broker_name}
+              value={config.broker_name || 'none'}
               onValueChange={(value) => updateConfig({ broker_name: value })}
             >
               <SelectTrigger id="broker-name">
                 <SelectValue placeholder="Select broker" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None (Paper Trading)</SelectItem>
+                <SelectItem value="none">None (Paper Trading)</SelectItem>
                 <SelectItem value="SETTRADE">SET Trade</SelectItem>
                 <SelectItem value="IRIS">IRIS</SelectItem>
                 <SelectItem value="KT_ZMICO">KT Zmico</SelectItem>
@@ -442,7 +442,7 @@ export default function TradingBotSettings() {
             </Select>
           </div>
 
-          {config.broker_name && (
+          {config.broker_name && config.broker_name !== 'none' && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="broker-account-id">Account ID</Label>

@@ -92,6 +92,24 @@ async function processUserTrades(supabase: any, config: BotConfig) {
   const canTrade = await checkSafetyLimits(supabase, config);
   if (!canTrade.allowed) {
     console.log(`Trading blocked for user ${config.user_id}: ${canTrade.reason}`);
+    
+    // Auto-disable bot
+    await supabase
+      .from('trading_bot_config')
+      .update({ enabled: false })
+      .eq('user_id', config.user_id);
+    
+    // Send alert to user
+    await supabase.from('trade_alerts').insert({
+      user_id: config.user_id,
+      stock_symbol: 'SYSTEM',
+      stock_name: 'System Alert',
+      alert_type: 'bot_auto_paused',
+      message: `🛑 Bot auto-paused: ${canTrade.reason}`,
+      current_price: null,
+      trigger_price: null
+    });
+    
     return { user_id: config.user_id, skipped: true, reason: canTrade.reason };
   }
 

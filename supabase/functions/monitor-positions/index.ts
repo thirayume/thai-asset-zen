@@ -272,5 +272,5 @@ async function executeExit(supabase: any, position: any, exitPrice: number, exit
       position_id: position.position_id,
     });
 
-  console.log(`Position exited successfully: ${position.id}`);
+  console.log(`✅ Successfully exited position ${position.id}`);
 }
