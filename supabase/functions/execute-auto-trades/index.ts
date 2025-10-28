@@ -335,9 +335,232 @@ async function executeTrade(
     console.log(`Paper trade executed successfully: ${execution.id}`);
     return { execution_id: execution.id, mode: 'paper', status: 'executed' };
   } else {
-    // Live trading would go here
-    // This would involve calling broker APIs
-    console.log('Live trading not yet implemented');
-    return { error: 'Live trading not implemented', mode: 'live' };
+    // Live trading with broker API
+    return await executeLiveTrade(supabase, config, signal, shares, totalValue, stopLoss, takeProfit);
+  }
+}
+
+async function executeLiveTrade(
+  supabase: any,
+  config: BotConfig,
+  signal: TradingSignal,
+  shares: number,
+  totalValue: number,
+  stopLoss: number | null,
+  takeProfit: number | null
+) {
+  console.log(`Executing LIVE trade: ${signal.signal_type} ${shares} shares of ${signal.stock_symbol}`);
+
+  try {
+    // Import broker API
+    const { getBrokerAPI } = await import('../_shared/brokerAPI.ts');
+
+    // Validate broker configuration
+    const { data: brokerConfig } = await supabase
+      .from('trading_bot_config')
+      .select('broker_name, broker_api_key, broker_account_id')
+      .eq('user_id', config.user_id)
+      .single();
+
+    if (!brokerConfig?.broker_name || !brokerConfig?.broker_api_key || !brokerConfig?.broker_account_id) {
+      throw new Error('Broker credentials not configured. Please configure broker in Bot Settings.');
+    }
+
+    // Initialize broker API
+    const brokerAPI = getBrokerAPI(
+      brokerConfig.broker_name,
+      brokerConfig.broker_api_key,
+      brokerConfig.broker_account_id
+    );
+
+    // Authenticate with broker
+    const authenticated = await brokerAPI.authenticate();
+    if (!authenticated) {
+      throw new Error('Broker authentication failed');
+    }
+
+    // Check account balance
+    const { cash } = await brokerAPI.getAccountBalance();
+    if (cash < totalValue) {
+      throw new Error(`Insufficient funds: Need ฿${totalValue}, Available: ฿${cash}`);
+    }
+
+    // Place order with broker
+    console.log(`Placing order with ${brokerConfig.broker_name}...`);
+    const orderResult = await brokerAPI.placeOrder({
+      symbol: signal.stock_symbol,
+      side: signal.signal_type,
+      quantity: shares,
+      price: signal.current_price,
+      orderType: 'LIMIT', // Use limit order for better control
+      timeInForce: 'DAY',
+    });
+
+    console.log(`Order placed: ${orderResult.orderId}, Status: ${orderResult.status}`);
+
+    // Record execution in database (pending)
+    const { data: execution, error: executionError } = await supabase
+      .from('auto_trade_executions')
+      .insert({
+        user_id: config.user_id,
+        signal_id: signal.id,
+        stock_symbol: signal.stock_symbol,
+        stock_name: signal.stock_name,
+        action: signal.signal_type,
+        shares: shares,
+        price: signal.current_price,
+        total_value: totalValue,
+        status: orderResult.status === 'filled' ? 'executed' : 'pending',
+        executed_at: orderResult.status === 'filled' ? new Date().toISOString() : null,
+        execution_price: orderResult.filledPrice || null,
+        stop_loss: stopLoss,
+        take_profit: takeProfit,
+        confidence_score: signal.confidence_score,
+        broker_order_id: orderResult.orderId,
+      })
+      .select()
+      .single();
+
+    if (executionError) throw executionError;
+
+    // Poll for order confirmation (max 30 seconds)
+    let attempts = 0;
+    const maxAttempts = 6; // 6 attempts * 5 seconds = 30 seconds
+    let finalStatus = orderResult.status;
+    let filledPrice = orderResult.filledPrice;
+
+    while (attempts < maxAttempts && finalStatus === 'pending') {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      
+      const statusCheck = await brokerAPI.getOrderStatus(orderResult.orderId);
+      finalStatus = statusCheck.status;
+      filledPrice = statusCheck.filledPrice || filledPrice;
+      
+      console.log(`Order status check ${attempts + 1}/${maxAttempts}: ${finalStatus}`);
+      
+      if (finalStatus === 'filled') break;
+      attempts++;
+    }
+
+    // Update execution record
+    await supabase
+      .from('auto_trade_executions')
+      .update({
+        status: finalStatus === 'filled' ? 'executed' : 'pending',
+        executed_at: finalStatus === 'filled' ? new Date().toISOString() : null,
+        execution_price: filledPrice,
+        failure_reason: finalStatus === 'rejected' ? 'Order rejected by broker' : null,
+      })
+      .eq('id', execution.id);
+
+    if (finalStatus === 'filled') {
+      // Create user position
+      const { error: positionError } = await supabase
+        .from('user_positions')
+        .insert({
+          user_id: config.user_id,
+          stock_symbol: signal.stock_symbol,
+          stock_name: signal.stock_name,
+          shares_owned: shares,
+          average_entry_price: filledPrice || signal.current_price,
+          purchase_date: new Date().toISOString(),
+          target_price: takeProfit,
+          stop_loss: stopLoss,
+          status: 'active',
+          notes: `Live trade from signal (${signal.confidence_score}% confidence, Order ID: ${orderResult.orderId})`,
+        });
+
+      if (positionError) throw positionError;
+
+      // Create monitored position
+      const { data: position } = await supabase
+        .from('user_positions')
+        .select('id')
+        .eq('user_id', config.user_id)
+        .eq('stock_symbol', signal.stock_symbol)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (position) {
+        await supabase
+          .from('monitored_positions')
+          .insert({
+            user_id: config.user_id,
+            position_id: position.id,
+            entry_price: filledPrice || signal.current_price,
+            current_price: filledPrice || signal.current_price,
+            stop_loss_price: stopLoss,
+            take_profit_price: takeProfit,
+            trailing_stop_enabled: config.trailing_stop_percent > 0,
+            highest_price_seen: filledPrice || signal.current_price,
+            active: true,
+          });
+      }
+
+      // Send success alert
+      await supabase.from('trade_alerts').insert({
+        user_id: config.user_id,
+        stock_symbol: signal.stock_symbol,
+        stock_name: signal.stock_name,
+        alert_type: 'trade_executed',
+        message: `✅ Live trade executed: BUY ${shares} shares of ${signal.stock_symbol} @ ฿${filledPrice?.toFixed(2) || signal.current_price}`,
+        current_price: filledPrice || signal.current_price,
+        trigger_price: signal.current_price,
+      });
+
+      console.log(`✅ Live trade executed successfully: ${execution.id}`);
+      return { execution_id: execution.id, mode: 'live', status: 'executed', order_id: orderResult.orderId };
+    } else {
+      // Order not filled in time
+      console.log(`⚠️ Order ${orderResult.orderId} not filled within timeout. Status: ${finalStatus}`);
+      
+      // Send alert
+      await supabase.from('trade_alerts').insert({
+        user_id: config.user_id,
+        stock_symbol: signal.stock_symbol,
+        stock_name: signal.stock_name,
+        alert_type: 'trade_pending',
+        message: `⏳ Live trade pending: ${signal.signal_type} ${shares} shares of ${signal.stock_symbol}. Order ID: ${orderResult.orderId}`,
+        current_price: signal.current_price,
+        trigger_price: signal.current_price,
+      });
+
+      return { execution_id: execution.id, mode: 'live', status: finalStatus, order_id: orderResult.orderId };
+    }
+  } catch (error) {
+    console.error('❌ Live trade execution failed:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Record failed execution
+    await supabase
+      .from('auto_trade_executions')
+      .insert({
+        user_id: config.user_id,
+        signal_id: signal.id,
+        stock_symbol: signal.stock_symbol,
+        stock_name: signal.stock_name,
+        action: signal.signal_type,
+        shares: shares,
+        price: signal.current_price,
+        total_value: totalValue,
+        status: 'failed',
+        failure_reason: errorMessage,
+        confidence_score: signal.confidence_score,
+      });
+
+    // Send alert
+    await supabase.from('trade_alerts').insert({
+      user_id: config.user_id,
+      stock_symbol: signal.stock_symbol,
+      stock_name: signal.stock_name,
+      alert_type: 'trade_failed',
+      message: `❌ Live trade failed: ${errorMessage}`,
+      current_price: signal.current_price,
+      trigger_price: signal.current_price,
+    });
+
+    return { error: errorMessage, mode: 'live', status: 'failed' };
   }
 }

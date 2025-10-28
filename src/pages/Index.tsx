@@ -22,6 +22,7 @@ import { SharePortfolio } from "@/components/SharePortfolio";
 import { Leaderboard } from "@/components/Leaderboard";
 import TradingBotSettings from "@/components/TradingBotSettings";
 import TradingBotDashboard from "@/components/TradingBotDashboard";
+import BotBacktest from "@/components/BotBacktest";
 import { BotTradeHistory } from "@/components/BotTradeHistory";
 import { BotAlerts } from "@/components/BotAlerts";
 
@@ -219,9 +220,10 @@ const Index = () => {
 
           <TabsContent value="bot" className="space-y-4">
             <Tabs defaultValue="dashboard" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="backtest">Backtest</TabsTrigger>
                 <TabsTrigger value="trades">Trades</TabsTrigger>
                 <TabsTrigger value="alerts">Alerts</TabsTrigger>
               </TabsList>
@@ -232,6 +234,10 @@ const Index = () => {
               
               <TabsContent value="settings" className="space-y-4 mt-4">
                 <TradingBotSettings />
+              </TabsContent>
+              
+              <TabsContent value="backtest" className="space-y-4 mt-4">
+                <BotBacktest />
               </TabsContent>
               
               <TabsContent value="trades" className="space-y-4 mt-4">

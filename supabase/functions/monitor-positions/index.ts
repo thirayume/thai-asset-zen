@@ -200,36 +200,99 @@ async function executeExit(supabase: any, position: any, exitPrice: number, exit
   const totalValue = shares * exitPrice;
   const pnl = (exitPrice - position.entry_price) * shares;
 
-  // Get bot config to check mode
+  // Get bot config to check mode and broker credentials
   const { data: config } = await supabase
     .from('trading_bot_config')
-    .select('mode')
+    .select('mode, broker_name, broker_api_key, broker_account_id')
     .eq('user_id', position.user_id)
     .single();
 
   const mode = config?.mode || 'paper';
 
-  // Record the exit trade
-  const { error: executionError } = await supabase
-    .from('auto_trade_executions')
-    .insert({
-      user_id: position.user_id,
-      stock_symbol: position.user_positions.stock_symbol,
-      stock_name: position.user_positions.stock_name,
-      action: 'SELL',
-      shares: shares,
-      price: exitPrice,
-      total_value: totalValue,
-      status: 'executed',
-      executed_at: new Date().toISOString(),
-      execution_price: exitPrice,
-      confidence_score: null,
-    });
+  // If live mode, execute through broker
+  if (mode === 'live') {
+    try {
+      const { getBrokerAPI } = await import('../_shared/brokerAPI.ts');
 
-  if (executionError) throw executionError;
+      if (!config?.broker_name || !config?.broker_api_key || !config?.broker_account_id) {
+        throw new Error('Broker credentials not configured');
+      }
+
+      const brokerAPI = getBrokerAPI(
+        config.broker_name,
+        config.broker_api_key,
+        config.broker_account_id
+      );
+
+      await brokerAPI.authenticate();
+
+      // Place sell order
+      const orderResult = await brokerAPI.placeOrder({
+        symbol: position.user_positions.stock_symbol,
+        side: 'SELL',
+        quantity: shares,
+        price: exitPrice,
+        orderType: 'LIMIT',
+        timeInForce: 'DAY',
+      });
+
+      console.log(`Live exit order placed: ${orderResult.orderId}`);
+
+      // Record the exit trade with broker order ID
+      await supabase
+        .from('auto_trade_executions')
+        .insert({
+          user_id: position.user_id,
+          stock_symbol: position.user_positions.stock_symbol,
+          stock_name: position.user_positions.stock_name,
+          action: 'SELL',
+          shares: shares,
+          price: exitPrice,
+          total_value: totalValue,
+          status: orderResult.status === 'filled' ? 'executed' : 'pending',
+          executed_at: orderResult.status === 'filled' ? new Date().toISOString() : null,
+          execution_price: orderResult.filledPrice || exitPrice,
+          confidence_score: null,
+          broker_order_id: orderResult.orderId,
+        });
+    } catch (error) {
+      console.error('❌ Live exit failed:', error);
+      
+      // Send alert about failure
+      await supabase.from('trade_alerts').insert({
+        user_id: position.user_id,
+        alert_type: 'trade_failed',
+        stock_symbol: position.user_positions.stock_symbol,
+        stock_name: position.user_positions.stock_name,
+        message: `❌ Failed to execute live exit: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        current_price: exitPrice,
+        trigger_price: exitPrice,
+        position_id: position.position_id,
+      });
+      
+      return; // Don't update position if broker trade failed
+    }
+  } else {
+    // Paper trading - just record
+    await supabase
+      .from('auto_trade_executions')
+      .insert({
+        user_id: position.user_id,
+        stock_symbol: position.user_positions.stock_symbol,
+        stock_name: position.user_positions.stock_name,
+        action: 'SELL',
+        shares: shares,
+        price: exitPrice,
+        total_value: totalValue,
+        status: 'executed',
+        executed_at: new Date().toISOString(),
+        execution_price: exitPrice,
+        confidence_score: null,
+      });
+  }
 
   // Update user position
-  const { error: positionError } = await supabase
+  const { error: positionUpdateError } = await supabase
     .from('user_positions')
     .update({
       status: 'sold',
@@ -239,7 +302,7 @@ async function executeExit(supabase: any, position: any, exitPrice: number, exit
     })
     .eq('id', position.position_id);
 
-  if (positionError) throw positionError;
+  if (positionUpdateError) throw positionUpdateError;
 
   // Deactivate monitored position
   const { error: monitorError } = await supabase
