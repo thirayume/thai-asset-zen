@@ -118,6 +118,33 @@ export type Database = {
           },
         ]
       }
+      broker_credentials: {
+        Row: {
+          account_no: string
+          app_code: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_no: string
+          app_code: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_no?: string
+          app_code?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_price_alerts: {
         Row: {
           alert_type: string

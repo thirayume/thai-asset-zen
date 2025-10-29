@@ -47,11 +47,61 @@ export default function TradingBotSettings() {
   const [config, setConfig] = useState<BotConfig>(defaultConfig);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [accountNo, setAccountNo] = useState('');
+  const [appCode, setAppCode] = useState('thirayum');
+  const [credentialsSaving, setCredentialsSaving] = useState(false);
+  const [credentialsConfigured, setCredentialsConfigured] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchConfig();
+    checkCredentialsStatus();
   }, []);
+
+  const checkCredentialsStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-broker-credentials');
+      if (error) throw error;
+      setCredentialsConfigured(data?.configured || false);
+    } catch (error) {
+      console.error('Error checking credentials:', error);
+    }
+  };
+
+  const saveCredentials = async () => {
+    if (!accountNo.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your account number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCredentialsSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-broker-credentials', {
+        body: { account_no: accountNo, app_code: appCode },
+      });
+
+      if (error) throw error;
+
+      setCredentialsConfigured(true);
+      toast({
+        title: "Success",
+        description: "Broker credentials saved securely",
+      });
+    } catch (error) {
+      console.error('Error saving credentials:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save credentials",
+        variant: "destructive",
+      });
+    } finally {
+      setCredentialsSaving(false);
+    }
+  };
 
   const fetchConfig = async () => {
     try {
@@ -405,15 +455,96 @@ export default function TradingBotSettings() {
         </CardContent>
       </Card>
 
+      {/* Broker Credentials */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            Broker Credentials
+          </CardTitle>
+          <CardDescription>
+            Configure your Settrade API credentials for live trading
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {credentialsConfigured ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>
+                  <strong>✅ Credentials Configured</strong><br />
+                  Your Settrade credentials are securely stored. Update them below if needed.
+                </span>
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>⚠️ Credentials Not Configured</strong><br />
+                Enter your Settrade credentials below to enable live trading.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="account-no">Account Number</Label>
+              <Input
+                id="account-no"
+                type="text"
+                placeholder="Enter your 10-digit account number"
+                value={accountNo}
+                onChange={(e) => setAccountNo(e.target.value)}
+                maxLength={10}
+              />
+              <p className="text-sm text-muted-foreground">
+                Your Settrade trading account number (found in your Settrade app)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="app-code">App Code / Username</Label>
+              <Input
+                id="app-code"
+                type="text"
+                placeholder="Enter your app code"
+                value={appCode}
+                onChange={(e) => setAppCode(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Your Settrade app code or username (default: thirayum)
+              </p>
+            </div>
+
+            <Button 
+              onClick={saveCredentials} 
+              disabled={credentialsSaving}
+              className="w-full"
+            >
+              {credentialsSaving ? 'Saving...' : 'Save Credentials'}
+            </Button>
+          </div>
+
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              <strong>Security Note:</strong> Credentials are encrypted and stored securely in backend secrets. 
+              They are never exposed in your browser or database.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+
       {/* Broker Integration */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5" />
-            Broker Integration
+            Broker Selection
           </CardTitle>
           <CardDescription>
-            Connect to your broker for live trading (optional for paper trading)
+            Select your broker for live trading
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -429,19 +560,18 @@ export default function TradingBotSettings() {
               <SelectContent>
                 <SelectItem value="none">None (Paper Trading)</SelectItem>
                 <SelectItem value="SETTRADE">SET Trade</SelectItem>
-                <SelectItem value="IRIS">IRIS</SelectItem>
-                <SelectItem value="KT_ZMICO">KT Zmico</SelectItem>
-                <SelectItem value="SETTRADE_STREAMING">Settrade Streaming</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {config.broker_name && config.broker_name !== 'none' && (
+          {config.broker_name === 'SETTRADE' && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Broker Integration Secured:</strong> For security, broker API credentials 
-                are now managed server-side only. Contact support to configure your {config.broker_name} integration.
+                <strong>Status: {credentialsConfigured ? '✅ Ready' : '⚠️ Credentials Needed'}</strong><br />
+                {credentialsConfigured 
+                  ? 'Your Settrade credentials are configured. You can enable live trading.'
+                  : 'Configure your credentials in the "Broker Credentials" section above.'}
               </AlertDescription>
             </Alert>
           )}

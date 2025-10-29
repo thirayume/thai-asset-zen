@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.backtest-strategy]
 verify_jwt = true
+
+[functions.update-broker-credentials]
+verify_jwt = true
+
+[functions.check-broker-credentials]
+verify_jwt = true
