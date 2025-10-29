@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Bot, Shield, TrendingUp, Zap } from "lucide-react";
+import { AlertTriangle, Bot, Shield, TrendingUp, Zap, AlertCircle } from "lucide-react";
 
 interface BotConfig {
   enabled: boolean;
