@@ -590,8 +590,6 @@ export type Database = {
           allowed_signal_types: string[] | null
           auto_stop_loss: boolean | null
           auto_take_profit: boolean | null
-          broker_account_id: string | null
-          broker_api_key: string | null
           broker_name: string | null
           created_at: string | null
           daily_loss_limit: number | null
@@ -611,8 +609,6 @@ export type Database = {
           allowed_signal_types?: string[] | null
           auto_stop_loss?: boolean | null
           auto_take_profit?: boolean | null
-          broker_account_id?: string | null
-          broker_api_key?: string | null
           broker_name?: string | null
           created_at?: string | null
           daily_loss_limit?: number | null
@@ -632,8 +628,6 @@ export type Database = {
           allowed_signal_types?: string[] | null
           auto_stop_loss?: boolean | null
           auto_take_profit?: boolean | null
-          broker_account_id?: string | null
-          broker_api_key?: string | null
           broker_name?: string | null
           created_at?: string | null
           daily_loss_limit?: number | null

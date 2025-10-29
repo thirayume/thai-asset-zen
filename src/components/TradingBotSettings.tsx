@@ -25,8 +25,6 @@ interface BotConfig {
   daily_loss_limit: number;
   max_portfolio_drawdown: number;
   broker_name: string;
-  broker_api_key: string;
-  broker_account_id: string;
 }
 
 const defaultConfig: BotConfig = {
@@ -43,8 +41,6 @@ const defaultConfig: BotConfig = {
   daily_loss_limit: 5000,
   max_portfolio_drawdown: 20,
   broker_name: '',
-  broker_api_key: '',
-  broker_account_id: '',
 };
 
 export default function TradingBotSettings() {
@@ -85,8 +81,6 @@ export default function TradingBotSettings() {
           daily_loss_limit: Number(data.daily_loss_limit),
           max_portfolio_drawdown: Number(data.max_portfolio_drawdown),
           broker_name: data.broker_name || '',
-          broker_api_key: data.broker_api_key || '',
-          broker_account_id: data.broker_account_id || '',
         });
       }
     } catch (error) {
@@ -443,32 +437,13 @@ export default function TradingBotSettings() {
           </div>
 
           {config.broker_name && config.broker_name !== 'none' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="broker-account-id">Account ID</Label>
-                <Input
-                  id="broker-account-id"
-                  type="text"
-                  value={config.broker_account_id}
-                  onChange={(e) => updateConfig({ broker_account_id: e.target.value })}
-                  placeholder="Enter your broker account ID"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="broker-api-key">API Key</Label>
-                <Input
-                  id="broker-api-key"
-                  type="password"
-                  value={config.broker_api_key}
-                  onChange={(e) => updateConfig({ broker_api_key: e.target.value })}
-                  placeholder="Enter your broker API key"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Your API key is encrypted and stored securely
-                </p>
-              </div>
-            </>
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Broker Integration Secured:</strong> For security, broker API credentials 
+                are now managed server-side only. Contact support to configure your {config.broker_name} integration.
+              </AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
