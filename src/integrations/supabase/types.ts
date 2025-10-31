@@ -402,6 +402,36 @@ export type Database = {
           },
         ]
       }
+      mt5_auth_tokens: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          last_used_at: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used_at?: string | null
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used_at?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mt5_ticks: {
         Row: {
           ask: number
@@ -468,6 +498,36 @@ export type Database = {
           max_position_size_percent?: number | null
           preferred_language?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      security_audit_log: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -662,7 +722,7 @@ export type Database = {
           stop_loss: number | null
           symbol: string
           take_profit: number | null
-          user_id: string | null
+          user_id: string
           volume: number
         }
         Insert: {
@@ -681,7 +741,7 @@ export type Database = {
           stop_loss?: number | null
           symbol: string
           take_profit?: number | null
-          user_id?: string | null
+          user_id: string
           volume: number
         }
         Update: {
@@ -700,7 +760,7 @@ export type Database = {
           stop_loss?: number | null
           symbol?: string
           take_profit?: number | null
-          user_id?: string | null
+          user_id?: string
           volume?: number
         }
         Relationships: [
@@ -1018,6 +1078,7 @@ export type Database = {
     Functions: {
       cleanup_expired_suggestions: { Args: never; Returns: undefined }
       cleanup_old_ticks: { Args: never; Returns: undefined }
+      generate_mt5_token: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1039,6 +1100,7 @@ export type Database = {
           username: string
         }[]
       }
+      validate_mt5_token: { Args: { token_value: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "member"
