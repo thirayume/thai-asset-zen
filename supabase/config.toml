@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.check-broker-credentials]
 verify_jwt = true
+
+[functions.receive-mt5-price]
+verify_jwt = false

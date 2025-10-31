@@ -114,9 +114,8 @@ Deno.serve(async (req) => {
     }
     
     // Validate capital
-    const capitalCheck = validateNumber(params.initialCapital, 1000, 10000000);
-    if (!capitalCheck.valid) {
-      console.error('[backtest] Invalid capital:', capitalCheck.errors);
+    if (params.initialCapital < 1000 || params.initialCapital > 10000000) {
+      console.error('[backtest] Invalid capital:', params.initialCapital);
       return new Response(
         JSON.stringify({ error: 'Initial capital must be between ฿1,000 and ฿10,000,000' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

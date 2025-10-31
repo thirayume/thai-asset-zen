@@ -402,6 +402,39 @@ export type Database = {
           },
         ]
       }
+      mt5_ticks: {
+        Row: {
+          ask: number
+          bid: number
+          created_at: string | null
+          id: number
+          spread: number | null
+          symbol: string
+          timestamp: string
+          volume: number | null
+        }
+        Insert: {
+          ask: number
+          bid: number
+          created_at?: string | null
+          id?: number
+          spread?: number | null
+          symbol: string
+          timestamp?: string
+          volume?: number | null
+        }
+        Update: {
+          ask?: number
+          bid?: number
+          created_at?: string | null
+          id?: number
+          spread?: number | null
+          symbol?: string
+          timestamp?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           allow_high_risk: boolean | null
@@ -611,6 +644,74 @@ export type Database = {
           watchlist_id?: string | null
         }
         Relationships: []
+      }
+      trade_executions: {
+        Row: {
+          action: string
+          closed_at: string | null
+          created_at: string | null
+          current_price: number | null
+          entry_price: number | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          order_id: string | null
+          profit_loss: number | null
+          signal_id: string | null
+          status: string
+          stop_loss: number | null
+          symbol: string
+          take_profit: number | null
+          user_id: string | null
+          volume: number
+        }
+        Insert: {
+          action: string
+          closed_at?: string | null
+          created_at?: string | null
+          current_price?: number | null
+          entry_price?: number | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          order_id?: string | null
+          profit_loss?: number | null
+          signal_id?: string | null
+          status: string
+          stop_loss?: number | null
+          symbol: string
+          take_profit?: number | null
+          user_id?: string | null
+          volume: number
+        }
+        Update: {
+          action?: string
+          closed_at?: string | null
+          created_at?: string | null
+          current_price?: number | null
+          entry_price?: number | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          order_id?: string | null
+          profit_loss?: number | null
+          signal_id?: string | null
+          status?: string
+          stop_loss?: number | null
+          symbol?: string
+          take_profit?: number | null
+          user_id?: string | null
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_executions_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "trading_signals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trading_bot_config: {
         Row: {
@@ -916,6 +1017,7 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_suggestions: { Args: never; Returns: undefined }
+      cleanup_old_ticks: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

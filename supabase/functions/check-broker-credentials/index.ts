@@ -62,9 +62,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[check-broker-credentials] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Internal server error',
+        error: errorMessage,
         configured: false 
       }),
       { 
