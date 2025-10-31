@@ -1,4 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { 
+  validateRequestBody,
+  validatePastDate,
+  validateNumber,
+  validateStockSymbol 
+} from '../_shared/validation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,7 +66,98 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const params: BacktestParams = await req.json();
-    console.log('Starting backtest:', params);
+    
+    // Validate request body
+    const bodyCheck = validateRequestBody(params, [
+      'startDate', 'endDate', 'initialCapital', 'botConfig'
+    ]);
+    if (!bodyCheck.valid) {
+      console.error('[backtest] Invalid request body:', bodyCheck.errors);
+      return new Response(
+        JSON.stringify({ error: bodyCheck.errors.join(', ') }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Validate dates
+    const startCheck = validatePastDate(params.startDate);
+    const endCheck = validatePastDate(params.endDate);
+    if (!startCheck.valid || !endCheck.valid) {
+      console.error('[backtest] Invalid dates:', { startCheck, endCheck });
+      return new Response(
+        JSON.stringify({ error: 'Invalid date range - dates must be in the past' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Validate date range not too large (max 2 years) and dates make sense
+    const start = new Date(params.startDate);
+    const end = new Date(params.endDate);
+    if (start >= end) {
+      return new Response(
+        JSON.stringify({ error: 'Start date must be before end date' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const daysDiff = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysDiff > 730) {
+      return new Response(
+        JSON.stringify({ error: 'Date range must not exceed 2 years (730 days)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (daysDiff < 1) {
+      return new Response(
+        JSON.stringify({ error: 'Date range must be at least 1 day' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Validate capital
+    const capitalCheck = validateNumber(params.initialCapital, 1000, 10000000);
+    if (!capitalCheck.valid) {
+      console.error('[backtest] Invalid capital:', capitalCheck.errors);
+      return new Response(
+        JSON.stringify({ error: 'Initial capital must be between ฿1,000 and ฿10,000,000' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Validate bot config parameters
+    if (params.botConfig.max_position_size <= 0 || params.botConfig.max_position_size > 10000000) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid max_position_size - must be between 0 and 10,000,000' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (params.botConfig.trailing_stop_percent < 0 || params.botConfig.trailing_stop_percent > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid trailing_stop_percent - must be between 0 and 100' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Validate symbols if provided
+    if (params.symbols && params.symbols.length > 0) {
+      for (const symbol of params.symbols) {
+        if (!validateStockSymbol(symbol)) {
+          console.error('[backtest] Invalid stock symbol:', symbol);
+          return new Response(
+            JSON.stringify({ error: `Invalid stock symbol: ${symbol}` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+    
+    console.log('Starting backtest with validated params:', {
+      startDate: params.startDate,
+      endDate: params.endDate,
+      initialCapital: params.initialCapital,
+      daysDiff,
+      symbolsCount: params.symbols?.length || 'using signal symbols'
+    });
 
     // Fetch historical signals in date range
     const { data: signals, error: signalsError } = await supabase
