@@ -26,13 +26,25 @@ const Admin = () => {
           return;
         }
 
-        // Check if user has admin role
-        const { data: hasAdminRole } = await supabase.rpc('has_role', {
+        // Server-side admin verification with audit logging
+        const { data: hasAdminRole, error: roleError } = await supabase.rpc('has_role', {
           _user_id: user.id,
           _role: 'admin'
         });
 
-        if (!hasAdminRole) {
+        // Log admin access attempt for security audit
+        await supabase.from('security_audit_log').insert({
+          user_id: user.id,
+          event_type: 'admin_access_attempt',
+          event_data: {
+            has_admin_role: hasAdminRole,
+            success: !!hasAdminRole,
+            page: 'admin_dashboard',
+          },
+        });
+
+        if (!hasAdminRole || roleError) {
+          console.warn('Unauthorized admin access attempt:', user.id);
           navigate("/");
           return;
         }

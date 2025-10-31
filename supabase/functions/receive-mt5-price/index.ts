@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { checkRateLimit, getClientIP } from '../_shared/rateLimit.ts';
+import { checkRateLimit, getClientIP, getRateLimitHeaders } from '../_shared/rateLimit.ts';
 import { validateMT5Price, sanitizePriceData } from '../_shared/mt5Validation.ts';
+import { logError, createErrorResponse } from '../_shared/errorHandler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,7 +33,8 @@ serve(async (req) => {
         { 
           status: 429, 
           headers: { 
-            ...corsHeaders, 
+            ...corsHeaders,
+            ...getRateLimitHeaders(rateLimitResult),
             'Content-Type': 'application/json',
             'Retry-After': '60'
           } 
@@ -167,11 +169,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[receive-mt5-price] Error:', errorMessage);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    logError('receive-mt5-price', error, { 
+      hasToken: !!req.headers.get('x-mt5-token'),
+      clientIP: getClientIP(req)
+    });
+    
+    return createErrorResponse(error, 500, corsHeaders);
   }
 });

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logError, createErrorResponse } from '../_shared/errorHandler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,22 +56,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Store credentials as secrets
-    // Note: In production, you'd use Supabase's Vault API or a secure key management service
-    // For now, we'll use a secure approach by storing encrypted values
-    
-    // Since we can't directly update Supabase Secrets from edge functions,
-    // we'll store them in a secure table with RLS policies
-    const { error: upsertError } = await supabaseAdminClient
-      .from('broker_credentials')
-      .upsert({
-        user_id: user.id,
-        account_no: account_no.trim(),
-        app_code: app_code.trim(),
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id'
-      });
+    // Store credentials using encryption function (handles encryption if key is configured)
+    const { error: upsertError } = await supabaseAdminClient.rpc(
+      'encrypt_and_store_broker_credentials',
+      {
+        p_user_id: user.id,
+        p_account_no: account_no.trim(),
+        p_app_code: app_code.trim(),
+      }
+    );
 
     if (upsertError) {
       console.error('[update-broker-credentials] Error upserting credentials:', upsertError);
@@ -91,16 +85,10 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('[update-broker-credentials] Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return new Response(
-      JSON.stringify({ 
-        error: errorMessage
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400 
-      }
-    );
+    logError('update-broker-credentials', error, { 
+      hasAuthHeader: !!req.headers.get('Authorization') 
+    });
+    
+    return createErrorResponse(error, 400, corsHeaders);
   }
 });
