@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { rateLimit } from '../_shared/rateLimit.ts';
+import { checkRateLimit, getClientIP } from '../_shared/rateLimit.ts';
 import { validateMT5Price, sanitizePriceData } from '../_shared/mt5Validation.ts';
 
 const corsHeaders = {
@@ -19,13 +19,16 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Rate Limiting (100 requests per minute per IP)
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-    const rateLimitResult = await rateLimit(req, 100, 60);
+    const clientIp = getClientIP(req);
+    const rateLimitResult = checkRateLimit(clientIp, {
+      maxRequests: 100,
+      windowMs: 60 * 1000, // 1 minute
+    });
     
     if (!rateLimitResult.allowed) {
       console.warn(`[receive-mt5-price] Rate limit exceeded for IP: ${clientIp}`);
       return new Response(
-        JSON.stringify({ error: 'Rate limit exceeded. Please wait before sending more requests.' }),
+        JSON.stringify({ error: rateLimitResult.message }),
         { 
           status: 429, 
           headers: { 
